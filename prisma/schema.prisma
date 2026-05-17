@@ -1,7 +1,7 @@
 generator client {
   provider        = "prisma-client-js"
-  engineType      = "library"
   previewFeatures = ["driverAdapters"]
+  engineType      = "library"
 }
 
 datasource db {
@@ -51,7 +51,7 @@ model archive_runs {
   from_year    Int
   to_year      Int
   triggered_by String    @db.VarChar(255)
-  summary_json Json?     @default(dbgenerated("(json_object())"))
+  summary_json Json?
   created_at   DateTime? @default(now()) @db.DateTime(0)
 }
 
@@ -80,17 +80,17 @@ model employee_leave_attendance_records {
   without_pay      Boolean?        @default(false)
   exceed_balance   Boolean?        @default(false)
   created_at       DateTime?       @default(now()) @db.DateTime(0)
-  leave_requests   leave_requests? @relation(fields: [leave_request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "employee_leave_attendance_records_ibfk_1")
-  leave_types      leave_types     @relation(fields: [leave_type_code], references: [code], onDelete: NoAction, onUpdate: NoAction, map: "employee_leave_attendance_records_ibfk_2")
-  users            users           @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "employee_leave_attendance_records_ibfk_3")
+  leave_requests   leave_requests? @relation(fields: [leave_request_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "employee_leave_attendance_records_ibfk_1")
+  leave_types      leave_types     @relation(fields: [leave_type_code], references: [code], onUpdate: Restrict, map: "employee_leave_attendance_records_ibfk_2")
+  users            users           @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "employee_leave_attendance_records_ibfk_3")
 
   @@index([employee_id], map: "employee_id")
-  @@index([leave_request_id], map: "leave_request_id")
   @@index([leave_type_code], map: "leave_type_code")
+  @@index([leave_request_id], map: "employee_leave_attendance_records_ibfk_1")
 }
 
 model employee_leave_entitlements {
-  id              String    @id @default(dbgenerated("(uuid())")) @db.VarChar(255)
+  id              String    @id @db.VarChar(255)
   employee_id     String    @db.VarChar(255)
   leave_type_code String    @db.VarChar(50)
   balance_year    Int
@@ -99,7 +99,7 @@ model employee_leave_entitlements {
   overridden_by   String?   @db.VarChar(255)
   created_at      DateTime? @default(now()) @db.DateTime(0)
   updated_at      DateTime? @default(now()) @db.DateTime(0)
-  users           users     @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "employee_leave_entitlements_ibfk_1")
+  users           users     @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "employee_leave_entitlements_ibfk_1")
 
   @@index([employee_id], map: "employee_id")
 }
@@ -118,14 +118,14 @@ model employee_service_years {
 }
 
 model evaluation_attachments {
-  id          String    @id @default(dbgenerated("(uuid())")) @db.VarChar(36)
+  id          String    @id @db.VarChar(36)
   employee_id String    @db.VarChar(255)
   file_name   String    @db.VarChar(255)
   file_url    String    @db.Text
   note        String?   @db.Text
   uploaded_by String    @db.VarChar(255)
   uploaded_at DateTime? @default(now()) @db.DateTime(0)
-  users       users     @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "evaluation_attachments_ibfk_1")
+  users       users     @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "evaluation_attachments_ibfk_1")
 
   @@index([employee_id], map: "employee_id")
 }
@@ -133,7 +133,7 @@ model evaluation_attachments {
 model historical_records {
   year         Int
   module       String    @db.VarChar(100)
-  payload_json Json?     @default(dbgenerated("(json_object())"))
+  payload_json Json?
   created_at   DateTime? @default(now()) @db.DateTime(0)
 
   @@id([year, module])
@@ -149,9 +149,9 @@ model leave_approvals {
   acted_at       DateTime?               @db.DateTime(0)
   created_at     DateTime?               @default(now()) @db.DateTime(0)
   updated_at     DateTime?               @default(now()) @db.DateTime(0)
-  leave_requests leave_requests          @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "leave_approvals_ibfk_1")
+  leave_requests leave_requests          @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "leave_approvals_ibfk_1")
 
-  @@index([request_id], map: "request_id")
+  @@index([request_id], map: "leave_approvals_ibfk_1")
 }
 
 model leave_archive {
@@ -177,7 +177,7 @@ model leave_balance_ledger {
   note             String?        @db.Text
   created_by       String?        @db.VarChar(255)
   created_at       DateTime?      @default(now()) @db.DateTime(0)
-  leave_balances   leave_balances @relation(fields: [balance_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "leave_balance_ledger_ibfk_1")
+  leave_balances   leave_balances @relation(fields: [balance_id], references: [id], onUpdate: Restrict, map: "leave_balance_ledger_ibfk_1")
 
   @@index([balance_id], map: "balance_id")
 }
@@ -195,8 +195,8 @@ model leave_balances {
   created_at           DateTime?              @default(now()) @db.DateTime(0)
   updated_at           DateTime?              @default(now()) @db.DateTime(0)
   leave_balance_ledger leave_balance_ledger[]
-  leave_types          leave_types            @relation(fields: [leave_type_code], references: [code], onDelete: NoAction, onUpdate: NoAction, map: "leave_balances_ibfk_1")
-  users                users                  @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "leave_balances_ibfk_2")
+  leave_types          leave_types            @relation(fields: [leave_type_code], references: [code], onUpdate: Restrict, map: "leave_balances_ibfk_1")
+  users                users                  @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "leave_balances_ibfk_2")
 
   @@index([employee_id], map: "employee_id")
   @@index([leave_type_code], map: "leave_type_code")
@@ -244,7 +244,7 @@ model leave_request_days {
   slot           leave_request_days_slot
   units          Decimal?                @default(0.50) @db.Decimal(5, 2)
   created_at     DateTime?               @default(now()) @db.DateTime(0)
-  leave_requests leave_requests          @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "leave_request_days_ibfk_1")
+  leave_requests leave_requests          @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "leave_request_days_ibfk_1")
 
   @@id([request_id, leave_date, slot])
 }
@@ -284,8 +284,8 @@ model leave_requests {
   leave_approvals                   leave_approvals[]
   leave_calendar_entries            leave_calendar_entries?
   leave_request_days                leave_request_days[]
-  leave_types                       leave_types                         @relation(fields: [leave_type], references: [code], onDelete: NoAction, onUpdate: NoAction, map: "leave_requests_ibfk_1")
-  users                             users                               @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "leave_requests_ibfk_2")
+  leave_types                       leave_types                         @relation(fields: [leave_type], references: [code], onUpdate: Restrict, map: "leave_requests_ibfk_1")
+  users                             users                               @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "leave_requests_ibfk_2")
   penalties                         penalties[]
 
   @@index([employee_id], map: "employee_id")
@@ -352,7 +352,7 @@ model notifications {
   read            Boolean?  @default(false)
   sent_at         DateTime? @db.DateTime(0)
   created_at      DateTime? @default(now()) @db.DateTime(0)
-  users           users     @relation(fields: [recipient_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notifications_ibfk_1")
+  users           users     @relation(fields: [recipient_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "notifications_ibfk_1")
 
   @@index([recipient_id], map: "recipient_id")
 }
@@ -373,13 +373,13 @@ model penalties {
   updated_at              DateTime?          @default(now()) @db.DateTime(0)
   penalty_category        String?            @default("standard") @db.VarChar(50)
   cash_amount             Decimal?           @default(0.00) @db.Decimal(10, 2)
-  penalty_types           penalty_types      @relation(fields: [penalty_type_code], references: [type_code], onDelete: NoAction, onUpdate: NoAction, map: "penalties_ibfk_1")
-  leave_requests          leave_requests?    @relation(fields: [linked_leave_request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "penalties_ibfk_2")
-  users                   users              @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "penalties_ibfk_3")
+  penalty_types           penalty_types      @relation(fields: [penalty_type_code], references: [type_code], onUpdate: Restrict, map: "penalties_ibfk_1")
+  leave_requests          leave_requests?    @relation(fields: [linked_leave_request_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "penalties_ibfk_2")
+  users                   users              @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "penalties_ibfk_3")
 
   @@index([employee_id], map: "employee_id")
-  @@index([linked_leave_request_id], map: "linked_leave_request_id")
   @@index([penalty_type_code], map: "penalty_type_code")
+  @@index([linked_leave_request_id], map: "penalties_ibfk_2")
 }
 
 model penalty_types {
@@ -394,14 +394,14 @@ model penalty_types {
 }
 
 model performance_comments {
-  id           String    @id @default(dbgenerated("(uuid())")) @db.VarChar(36)
+  id           String    @id @db.VarChar(36)
   employee_id  String    @db.VarChar(255)
   period_label String    @db.VarChar(50)
   author_id    String    @db.VarChar(255)
   author_name  String    @db.VarChar(255)
   content      String    @db.Text
   created_at   DateTime? @default(now()) @db.DateTime(0)
-  users        users     @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "performance_comments_ibfk_1")
+  users        users     @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "performance_comments_ibfk_1")
 
   @@index([employee_id], map: "employee_id")
 }
@@ -409,7 +409,7 @@ model performance_comments {
 model performance_config {
   id          BigInt    @id @default(autoincrement())
   config_key  String    @db.VarChar(100)
-  config_json Json      @default(dbgenerated("(json_object())"))
+  config_json Json
   is_active   Boolean?  @default(true)
   version_no  Int?      @default(1)
   updated_by  String?   @db.VarChar(255)
@@ -437,7 +437,7 @@ model performance_inputs {
   updated_by          String?                        @db.VarChar(255)
   created_at          DateTime?                      @default(now()) @db.DateTime(0)
   updated_at          DateTime?                      @default(now()) @db.DateTime(0)
-  users               users                          @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "performance_inputs_ibfk_1")
+  users               users                          @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "performance_inputs_ibfk_1")
 
   @@index([employee_id], map: "employee_id")
 }
@@ -468,16 +468,16 @@ model performance_scores {
   approved_at           DateTime?                      @db.DateTime(0)
   created_at            DateTime?                      @default(now()) @db.DateTime(0)
   updated_at            DateTime?                      @default(now()) @db.DateTime(0)
-  users                 users                          @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "performance_scores_ibfk_1")
+  users                 users                          @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "performance_scores_ibfk_1")
 
   @@index([employee_id], map: "employee_id")
 }
 
 model performance_sheets {
   year          Int       @id
-  columns_json  Json?     @default(dbgenerated("(json_array())"))
-  sections_json Json?     @default(dbgenerated("(json_array())"))
-  cells_json    Json?     @default(dbgenerated("(json_object())"))
+  columns_json  Json?
+  sections_json Json?
+  cells_json    Json?
   updated_at    DateTime? @default(now()) @db.DateTime(0)
 }
 
@@ -491,8 +491,8 @@ model profile_update_requests {
   review_comment                                   String?                         @db.Text
   created_at                                       DateTime?                       @default(now()) @db.DateTime(0)
   updated_at                                       DateTime?                       @default(now()) @db.DateTime(0)
-  users_profile_update_requests_employee_idTousers users                           @relation("profile_update_requests_employee_idTousers", fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "profile_update_requests_ibfk_1")
-  users_profile_update_requests_reviewed_byTousers users?                          @relation("profile_update_requests_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "profile_update_requests_ibfk_2")
+  users_profile_update_requests_employee_idTousers users                           @relation("profile_update_requests_employee_idTousers", fields: [employee_id], references: [id], onUpdate: Restrict, map: "profile_update_requests_ibfk_1")
+  users_profile_update_requests_reviewed_byTousers users?                          @relation("profile_update_requests_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "profile_update_requests_ibfk_2")
 
   @@index([employee_id], map: "employee_id")
   @@index([reviewed_by], map: "reviewed_by")
@@ -510,7 +510,7 @@ model profiles {
   reports_to_id   String?                   @db.VarChar(255)
   created_at      DateTime?                 @default(now()) @db.DateTime(0)
   updated_at      DateTime?                 @default(now()) @db.DateTime(0)
-  users           users?                    @relation(fields: [reports_to_id], references: [id], onUpdate: NoAction, map: "profiles_ibfk_1")
+  users           users?                    @relation(fields: [reports_to_id], references: [id], onUpdate: Restrict, map: "profiles_ibfk_1")
 
   @@index([reports_to_id], map: "reports_to_id")
 }
@@ -530,13 +530,13 @@ model scoring_categories {
 }
 
 model self_evaluations {
-  id           String    @id @default(dbgenerated("(uuid())")) @db.VarChar(36)
+  id           String    @id @db.VarChar(36)
   employee_id  String    @db.VarChar(255)
   period_label String    @db.VarChar(50)
   reflection   String?   @db.Text
   hod_comment  String?   @db.Text
   saved_at     DateTime? @default(now()) @db.DateTime(0)
-  users        users     @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "self_evaluations_ibfk_1")
+  users        users     @relation(fields: [employee_id], references: [id], onUpdate: Restrict, map: "self_evaluations_ibfk_1")
 
   @@index([employee_id], map: "employee_id")
 }
@@ -564,7 +564,6 @@ model users {
   dept                                                               String                              @default("") @db.VarChar(100)
   status                                                             users_status                        @default(active)
   join_date                                                          String                              @default("") @db.VarChar(50)
-  password                                                           String?                             @db.VarChar(255)
   created_at                                                         DateTime?                           @default(now()) @db.DateTime(0)
   updated_at                                                         DateTime?                           @default(now()) @db.DateTime(0)
   reports_to_id                                                      String?                             @db.VarChar(255)
@@ -581,6 +580,7 @@ model users {
   mailing_address                                                    String?                             @db.Text
   phone_number                                                       String?                             @db.VarChar(20)
   department_id                                                      String?                             @db.VarChar(100)
+  password                                                           String?                             @db.VarChar(255)
   employee_leave_attendance_records                                  employee_leave_attendance_records[]
   employee_leave_entitlements                                        employee_leave_entitlements[]
   employee_service_years                                             employee_service_years?
@@ -596,7 +596,7 @@ model users {
   profile_update_requests_profile_update_requests_reviewed_byTousers profile_update_requests[]           @relation("profile_update_requests_reviewed_byTousers")
   profiles                                                           profiles[]
   self_evaluations                                                   self_evaluations[]
-  users                                                              users?                              @relation("usersTousers", fields: [reports_to_id], references: [id], onUpdate: NoAction, map: "users_ibfk_1")
+  users                                                              users?                              @relation("usersTousers", fields: [reports_to_id], references: [id], onUpdate: Restrict, map: "users_ibfk_1")
   other_users                                                        users[]                             @relation("usersTousers")
 
   @@index([reports_to_id], map: "reports_to_id")
