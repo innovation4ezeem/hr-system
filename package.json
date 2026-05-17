@@ -1,0 +1,99 @@
+{
+  "name": "ezeemops",
+  "version": "0.1.0",
+  "private": true,
+  "rocketCritical": {
+    "dependencies": [
+      "next",
+      "react",
+      "react-dom",
+      "@dhiwise/component-tagger",
+      "@tailwindcss/typography",
+      "recharts"
+    ],
+    "devDependencies": [
+      "typescript",
+      "@types/node",
+      "@types/react",
+      "@types/react-dom",
+      "@typescript-eslint/eslint-plugin",
+      "@typescript-eslint/parser",
+      "eslint-config-next",
+      "tailwindcss",
+      "autoprefixer",
+      "postcss",
+      "eslint",
+      "prettier",
+      "@netlify/plugin-nextjs"
+    ],
+    "scripts": [
+      "dev",
+      "build",
+      "start",
+      "lint",
+      "lint:fix",
+      "format",
+      "serve",
+      "type-check"
+    ],
+    "warning": "🚨 CRITICAL: DO NOT REMOVE OR MODIFY ABOVE DEPENDENCIES - Required for Next.js 15 TypeScript app functionality"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "postinstall": "prisma generate"
+},
+  "dependencies": {
+    "@dhiwise/component-tagger": "^1.0.15",
+    "@heroicons/react": "^2.2.0",
+    "@prisma/adapter-mariadb": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/nodemailer": "^8.0.0",
+    "@types/pdfkit": "^0.17.5",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "mariadb": "^3.5.2",
+    "next": "^15.5.16",
+    "nodemailer": "^8.0.5",
+    "pdfkit": "^0.18.0",
+    "react": "19.0.3",
+    "react-dom": "19.0.3",
+    "react-hook-form": "^7.72.1",
+    "recharts": "^2.15.2",
+    "sonner": "^1.7.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
+    "zod": "^4.3.6"
+  },
+  "overrides": {
+    "postcss": "^8.5.14",
+    "@hono/node-server": "^1.19.13"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@netlify/plugin-nextjs": "^5.11.1",
+    "@types/node": "^20",
+    "@types/react": "19.0.3",
+    "@types/react-dom": "19.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
+    "autoprefixer": "^10.5.0",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "^15.2.4",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-prettier": "^5.2.6",
+    "pg": "^8.20.0",
+    "postcss": "^8.5.14",
+    "prettier": "^3.5.3",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5"
+  }
+}
