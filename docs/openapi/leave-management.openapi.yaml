@@ -1,0 +1,362 @@
+openapi: 3.0.3
+info:
+  title: HROperations Leave Management API
+  version: 1.0.0
+  description: |
+    Leave Management module APIs for employee submission, manager approval,
+    HR configuration, and reporting.
+servers:
+  - url: /api
+components:
+  securitySchemes:
+    roleHeader:
+      type: apiKey
+      in: header
+      name: x-user-role
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          oneOf:
+            - type: string
+            - type: object
+
+    LeaveValidationRequest:
+      type: object
+      required: [action, employeeId, leaveType, startDate, endDate, session]
+      properties:
+        action:
+          type: string
+          enum: [validate]
+        employeeId:
+          type: string
+        leaveType:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        session:
+          type: string
+          enum: [FULL, AM, PM]
+        fromHalf:
+          type: string
+          enum: [AM, PM]
+        toHalf:
+          type: string
+          enum: [AM, PM]
+
+    LeaveSubmitRequest:
+      type: object
+      required:
+        - action
+        - employeeId
+        - employeeName
+        - dept
+        - leaveType
+        - employmentType
+        - startDate
+        - endDate
+        - session
+        - reason
+        - reportingOfficer
+      properties:
+        action:
+          type: string
+          enum: [submit]
+        employeeId:
+          type: string
+        employeeName:
+          type: string
+        dept:
+          type: string
+        leaveType:
+          type: string
+        employmentType:
+          type: string
+          enum: [Permanent, Intern, Contract]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        session:
+          type: string
+          enum: [FULL, AM, PM]
+        units:
+          type: number
+        reason:
+          type: string
+          minLength: 10
+        attachment:
+          type: string
+        reportingOfficer:
+          type: string
+        fromHalf:
+          type: string
+          enum: [AM, PM]
+        toHalf:
+          type: string
+          enum: [AM, PM]
+
+    LeaveDecisionRequest:
+      type: object
+      required: [action, actor]
+      properties:
+        action:
+          type: string
+          enum: [approve, reject, cancel]
+        actor:
+          type: string
+        reason:
+          type: string
+        comment:
+          type: string
+
+paths:
+  /leave-requests:
+    get:
+      summary: Get queue/history leave requests
+      security:
+        - roleHeader: []
+      parameters:
+        - in: query
+          name: mode
+          required: true
+          schema:
+            type: string
+            enum: [queue, history]
+        - in: query
+          name: hodId
+          schema:
+            type: string
+        - in: query
+          name: employeeId
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: year
+          schema:
+            type: integer
+        - in: query
+          name: leaveType
+          schema:
+            type: string
+        - in: query
+          name: employmentType
+          schema:
+            type: string
+        - in: query
+          name: dateRangeStart
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: dateRangeEnd
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: employeeNameSearch
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Leave request list
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Validate, submit, or bulk decide leave requests
+      security:
+        - roleHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/LeaveValidationRequest'
+                - $ref: '#/components/schemas/LeaveSubmitRequest'
+                - type: object
+                  required: [action, actor, requestIds]
+                  properties:
+                    action:
+                      type: string
+                      enum: [bulk-decision]
+                    actor:
+                      type: string
+                    requestIds:
+                      type: array
+                      items:
+                        type: string
+                    comment:
+                      type: string
+                    reason:
+                      type: string
+      responses:
+        '200':
+          description: Validation or bulk decision result
+        '201':
+          description: Leave request created
+        '400':
+          description: Validation error
+
+  /leave-requests/{id}:
+    post:
+      summary: Approve, reject, or cancel single leave request
+      security:
+        - roleHeader: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaveDecisionRequest'
+      responses:
+        '200':
+          description: Updated leave request
+        '400':
+          description: Validation error
+        '403':
+          description: Forbidden
+
+  /leave-management:
+    get:
+      summary: Query leave management configurations and reports
+      security:
+        - roleHeader: []
+      parameters:
+        - in: query
+          name: mode
+          required: true
+          schema:
+            type: string
+            enum:
+              - leave-types
+              - eligible-types
+              - balances
+              - workflows
+              - holidays
+              - calendar
+              - reports
+        - in: query
+          name: reportMode
+          schema:
+            type: string
+            enum:
+              - monthly
+              - yearly
+              - balance
+              - utilization
+          description: Required when mode=reports.
+        - in: query
+          name: employeeId
+          schema:
+            type: string
+        - in: query
+          name: year
+          schema:
+            type: integer
+        - in: query
+          name: month
+          schema:
+            type: string
+            example: 2026-04
+        - in: query
+          name: department
+          schema:
+            type: string
+        - in: query
+          name: includeInactive
+          schema:
+            type: string
+            enum: ['0', '1']
+        - in: query
+          name: region
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Leave management data
+        '400':
+          description: Validation error
+        '403':
+          description: Forbidden
+
+    post:
+      summary: HR Admin mutation APIs for leave setup
+      security:
+        - roleHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - upsert-leave-type
+                    - delete-leave-type
+                    - upsert-workflow
+                    - delete-workflow
+                    - upsert-holiday
+                    - delete-holiday
+                code:
+                  type: string
+                id:
+                  type: string
+                payload:
+                  type: object
+      responses:
+        '200':
+          description: Mutation success
+        '400':
+          description: Validation error
+        '403':
+          description: Forbidden
+
+  /leave-attachments:
+    post:
+      summary: Upload leave attachment (PDF/JPG/PNG up to 5MB)
+      security:
+        - roleHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Uploaded attachment metadata
+        '400':
+          description: Invalid file
+        '403':
+          description: Forbidden

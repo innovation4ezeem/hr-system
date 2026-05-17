@@ -1,0 +1,686 @@
+generator client {
+  provider        = "prisma-client-js"
+  engineType      = "library"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model activity_logs {
+  id           String   @id @db.VarChar(255)
+  actor_id     String   @db.VarChar(255)
+  actor_name   String   @default("") @db.VarChar(255)
+  action       String   @db.VarChar(255)
+  module       String   @default("") @db.VarChar(255)
+  related_id   String?  @db.VarChar(255)
+  description  String?  @db.Text
+  ip_address   String?  @db.VarChar(64)
+  payload_json Json?
+  created_at   DateTime @default(now()) @db.DateTime(0)
+
+  @@index([actor_id], map: "idx_activity_logs_actor")
+  @@index([created_at], map: "idx_activity_logs_created")
+  @@index([module], map: "idx_activity_logs_module")
+}
+
+model activity_score_entries {
+  id                  String    @id @db.VarChar(255)
+  activity_name       String    @db.Text
+  date                String    @db.VarChar(50)
+  year                Int
+  month               String    @db.VarChar(20)
+  category            String    @db.VarChar(100)
+  score_bucket        String    @db.VarChar(50)
+  score               Float?    @default(0)
+  source_folder       String?   @db.Text
+  description         String?   @db.Text
+  assigned_to_name    String    @db.VarChar(255)
+  assigned_to_id      String    @db.VarChar(255)
+  attachment_name     String?   @db.Text
+  attachment_url      String?   @db.Text
+  created_at          DateTime? @default(now()) @db.DateTime(0)
+  updated_at          DateTime? @default(now()) @db.DateTime(0)
+  updated_by          String?   @db.VarChar(255)
+  performance_weights Json?
+}
+
+model archive_runs {
+  run_id       BigInt    @id @default(autoincrement())
+  from_year    Int
+  to_year      Int
+  triggered_by String    @db.VarChar(255)
+  summary_json Json?     @default(dbgenerated("(json_object())"))
+  created_at   DateTime? @default(now()) @db.DateTime(0)
+}
+
+model departments {
+  id         String    @id @db.VarChar(100)
+  name       String    @db.VarChar(255)
+  hod        String?   @db.VarChar(255)
+  hod_id     String?   @db.VarChar(255)
+  headcount  Int?      @default(0)
+  budget     String?   @db.VarChar(100)
+  status     String?   @default("active") @db.VarChar(50)
+  created_at DateTime? @default(now()) @db.DateTime(0)
+  updated_at DateTime? @default(now()) @db.DateTime(0)
+}
+
+model employee_leave_attendance_records {
+  id               String          @id @db.VarChar(255)
+  employee_id      String          @db.VarChar(255)
+  employee_name    String          @db.VarChar(255)
+  department       String          @db.VarChar(100)
+  leave_request_id String?         @db.VarChar(255)
+  leave_type_code  String          @db.VarChar(50)
+  start_date       String          @db.VarChar(50)
+  end_date         String          @db.VarChar(50)
+  units            Decimal         @default(0.00) @db.Decimal(10, 2)
+  without_pay      Boolean?        @default(false)
+  exceed_balance   Boolean?        @default(false)
+  created_at       DateTime?       @default(now()) @db.DateTime(0)
+  leave_requests   leave_requests? @relation(fields: [leave_request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "employee_leave_attendance_records_ibfk_1")
+  leave_types      leave_types     @relation(fields: [leave_type_code], references: [code], onDelete: NoAction, onUpdate: NoAction, map: "employee_leave_attendance_records_ibfk_2")
+  users            users           @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "employee_leave_attendance_records_ibfk_3")
+
+  @@index([employee_id], map: "employee_id")
+  @@index([leave_request_id], map: "leave_request_id")
+  @@index([leave_type_code], map: "leave_type_code")
+}
+
+model employee_leave_entitlements {
+  id              String    @id @default(dbgenerated("(uuid())")) @db.VarChar(255)
+  employee_id     String    @db.VarChar(255)
+  leave_type_code String    @db.VarChar(50)
+  balance_year    Int
+  override_days   Decimal   @db.Decimal(10, 2)
+  override_reason String?   @db.Text
+  overridden_by   String?   @db.VarChar(255)
+  created_at      DateTime? @default(now()) @db.DateTime(0)
+  updated_at      DateTime? @default(now()) @db.DateTime(0)
+  users           users     @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "employee_leave_entitlements_ibfk_1")
+
+  @@index([employee_id], map: "employee_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model employee_service_years {
+  employee_id        String    @id @db.VarChar(255)
+  employee_name      String    @db.VarChar(255)
+  hire_date          String    @db.VarChar(20)
+  employment_type    String    @db.VarChar(20)
+  service_years      Float     @default(0)
+  last_calculated_at DateTime? @db.DateTime(0)
+  created_at         DateTime  @default(now()) @db.DateTime(0)
+  updated_at         DateTime  @default(now()) @db.DateTime(0)
+  users              users     @relation(fields: [employee_id], references: [id], onDelete: Cascade, map: "fk_esy_employee")
+}
+
+model evaluation_attachments {
+  id          String    @id @default(dbgenerated("(uuid())")) @db.VarChar(36)
+  employee_id String    @db.VarChar(255)
+  file_name   String    @db.VarChar(255)
+  file_url    String    @db.Text
+  note        String?   @db.Text
+  uploaded_by String    @db.VarChar(255)
+  uploaded_at DateTime? @default(now()) @db.DateTime(0)
+  users       users     @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "evaluation_attachments_ibfk_1")
+
+  @@index([employee_id], map: "employee_id")
+}
+
+model historical_records {
+  year         Int
+  module       String    @db.VarChar(100)
+  payload_json Json?     @default(dbgenerated("(json_object())"))
+  created_at   DateTime? @default(now()) @db.DateTime(0)
+
+  @@id([year, module])
+}
+
+model leave_approvals {
+  id             String                  @id @db.VarChar(255)
+  request_id     String                  @db.VarChar(255)
+  level_no       Int
+  approver_id    String                  @db.VarChar(255)
+  action         leave_approvals_action? @default(pending)
+  comment        String?                 @db.Text
+  acted_at       DateTime?               @db.DateTime(0)
+  created_at     DateTime?               @default(now()) @db.DateTime(0)
+  updated_at     DateTime?               @default(now()) @db.DateTime(0)
+  leave_requests leave_requests          @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "leave_approvals_ibfk_1")
+
+  @@index([request_id], map: "request_id")
+}
+
+model leave_archive {
+  id                  String    @id @db.VarChar(255)
+  year                Int
+  employee_id         String    @db.VarChar(255)
+  employee_name       String    @db.VarChar(255)
+  total_allocation    Decimal   @db.Decimal(10, 2)
+  utilized            Decimal   @db.Decimal(10, 2)
+  balance             Decimal   @db.Decimal(10, 2)
+  carry_forward       Decimal   @db.Decimal(10, 2)
+  prorated_allocation Decimal?  @db.Decimal(10, 2)
+  archive_date        DateTime? @default(now()) @db.DateTime(0)
+  created_at          DateTime? @default(now()) @db.DateTime(0)
+}
+
+model leave_balance_ledger {
+  id               String         @id @db.VarChar(255)
+  balance_id       String         @db.VarChar(255)
+  leave_request_id String?        @db.VarChar(255)
+  txn_type         String         @db.VarChar(50)
+  delta_days       Decimal        @db.Decimal(10, 2)
+  note             String?        @db.Text
+  created_by       String?        @db.VarChar(255)
+  created_at       DateTime?      @default(now()) @db.DateTime(0)
+  leave_balances   leave_balances @relation(fields: [balance_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "leave_balance_ledger_ibfk_1")
+
+  @@index([balance_id], map: "balance_id")
+}
+
+model leave_balances {
+  id                   String                 @id @db.VarChar(255)
+  employee_id          String                 @db.VarChar(255)
+  leave_type_code      String                 @db.VarChar(50)
+  balance_year         Int
+  opening_days         Decimal?               @default(0.00) @db.Decimal(10, 2)
+  carry_forward_days   Decimal?               @default(0.00) @db.Decimal(10, 2)
+  adjusted_days        Decimal?               @default(0.00) @db.Decimal(10, 2)
+  used_days            Decimal?               @default(0.00) @db.Decimal(10, 2)
+  min_allowed_days     Decimal?               @default(0.00) @db.Decimal(10, 2)
+  created_at           DateTime?              @default(now()) @db.DateTime(0)
+  updated_at           DateTime?              @default(now()) @db.DateTime(0)
+  leave_balance_ledger leave_balance_ledger[]
+  leave_types          leave_types            @relation(fields: [leave_type_code], references: [code], onDelete: NoAction, onUpdate: NoAction, map: "leave_balances_ibfk_1")
+  users                users                  @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "leave_balances_ibfk_2")
+
+  @@index([employee_id], map: "employee_id")
+  @@index([leave_type_code], map: "leave_type_code")
+}
+
+model leave_calendar_entries {
+  id              String         @id @db.VarChar(255)
+  request_id      String         @unique(map: "uq_leave_calendar_request_id") @db.VarChar(255)
+  employee_id     String         @db.VarChar(255)
+  employee_name   String         @db.VarChar(255)
+  leave_type_code String         @db.VarChar(255)
+  start_date      String         @db.VarChar(20)
+  end_date        String         @db.VarChar(20)
+  units           Decimal        @default(0.00) @db.Decimal(10, 2)
+  created_at      DateTime       @default(now()) @db.DateTime(0)
+  leave_requests  leave_requests @relation(fields: [request_id], references: [id], onDelete: Cascade, map: "fk_lce_request_id")
+
+  @@index([employee_id], map: "idx_lce_employee_id")
+  @@index([end_date], map: "idx_lce_end_date")
+  @@index([leave_type_code], map: "idx_lce_leave_type")
+  @@index([start_date], map: "idx_lce_start_date")
+}
+
+model leave_control_state {
+  id           String   @id @db.VarChar(255)
+  payload_json Json?
+  updated_at   DateTime @default(now()) @db.DateTime(0)
+}
+
+model leave_holidays {
+  id           String    @id @db.VarChar(255)
+  holiday_date String    @db.VarChar(50)
+  name         String    @db.VarChar(255)
+  region       String?   @default("DEFAULT") @db.VarChar(50)
+  optional     Boolean?  @default(false)
+  deleted_at   DateTime? @db.DateTime(0)
+  created_at   DateTime? @default(now()) @db.DateTime(0)
+  updated_at   DateTime? @default(now()) @db.DateTime(0)
+}
+
+model leave_request_days {
+  request_id     String                  @db.VarChar(255)
+  employee_id    String                  @db.VarChar(255)
+  leave_date     String                  @db.VarChar(50)
+  slot           leave_request_days_slot
+  units          Decimal?                @default(0.50) @db.Decimal(5, 2)
+  created_at     DateTime?               @default(now()) @db.DateTime(0)
+  leave_requests leave_requests          @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "leave_request_days_ibfk_1")
+
+  @@id([request_id, leave_date, slot])
+}
+
+model leave_requests {
+  id                                String                              @id @db.VarChar(255)
+  employee_id                       String                              @db.VarChar(255)
+  employee_name                     String                              @db.VarChar(255)
+  dept                              String                              @db.VarChar(100)
+  leave_type                        String                              @db.VarChar(50)
+  employment_type                   String?                             @default("Permanent") @db.VarChar(50)
+  start_date                        String                              @db.VarChar(50)
+  end_date                          String                              @db.VarChar(50)
+  session                           String?                             @default("FULL") @db.VarChar(20)
+  units                             Decimal?                            @default(0.00) @db.Decimal(10, 2)
+  reason                            String?                             @db.Text
+  attachment                        String?                             @db.Text
+  status                            String?                             @default("pending") @db.VarChar(30)
+  requested_by                      String?                             @db.VarChar(255)
+  requested_at                      DateTime?                           @default(now()) @db.DateTime(0)
+  approved_by                       String?                             @db.VarChar(255)
+  approved_at                       DateTime?                           @db.DateTime(0)
+  rejected_by                       String?                             @db.VarChar(255)
+  rejected_at                       DateTime?                           @db.DateTime(0)
+  rejection_reason                  String?                             @db.Text
+  reporting_officer                 String?                             @db.VarChar(255)
+  current_approval_level            Int?                                @default(1)
+  workflow_levels                   Int?                                @default(1)
+  final_decision_comment            String?                             @db.Text
+  cancel_reason                     String?                             @db.Text
+  cancelled_by                      String?                             @db.VarChar(255)
+  cancelled_at                      DateTime?                           @db.DateTime(0)
+  moved_to_history_at               DateTime?                           @db.DateTime(0)
+  created_at                        DateTime?                           @default(now()) @db.DateTime(0)
+  updated_at                        DateTime?                           @default(now()) @db.DateTime(0)
+  employee_leave_attendance_records employee_leave_attendance_records[]
+  leave_approvals                   leave_approvals[]
+  leave_calendar_entries            leave_calendar_entries?
+  leave_request_days                leave_request_days[]
+  leave_types                       leave_types                         @relation(fields: [leave_type], references: [code], onDelete: NoAction, onUpdate: NoAction, map: "leave_requests_ibfk_1")
+  users                             users                               @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "leave_requests_ibfk_2")
+  penalties                         penalties[]
+
+  @@index([employee_id], map: "employee_id")
+  @@index([leave_type], map: "leave_type")
+}
+
+model leave_types {
+  code                              String                              @id @db.VarChar(50)
+  name                              String                              @db.VarChar(255)
+  days_per_year                     Int                                 @default(0)
+  allow_negative_balance            Boolean?                            @default(false)
+  max_negative_days                 Int?                                @default(0)
+  carry_forward_enabled             Boolean?                            @default(false)
+  carry_forward_cap                 Int?                                @default(0)
+  gender_scope                      String?                             @default("ALL") @db.VarChar(20)
+  approval_levels                   Int?                                @default(1) @db.SmallInt
+  requires_attachment               Boolean?                            @default(false)
+  allow_half_day                    Boolean?                            @default(true)
+  auto_penalty_on_without_pay       Boolean?                            @default(false)
+  auto_penalty_on_exceed_balance    Boolean?                            @default(false)
+  penalty_type_code                 String?                             @db.VarChar(50)
+  penalty_deduction_mode            String?                             @db.VarChar(20)
+  penalty_deduction_value           Float?
+  active                            Boolean?                            @default(true)
+  created_at                        DateTime?                           @default(now()) @db.DateTime(0)
+  updated_at                        DateTime?                           @default(now()) @db.DateTime(0)
+  employee_leave_attendance_records employee_leave_attendance_records[]
+  leave_balances                    leave_balances[]
+  leave_requests                    leave_requests[]
+}
+
+model leave_workflow_configs {
+  id              String    @id @db.VarChar(255)
+  department_id   String?   @db.VarChar(100)
+  leave_type_code String?   @db.VarChar(50)
+  level_count     Int?      @default(1) @db.SmallInt
+  hr_approver_id  String?   @db.VarChar(255)
+  active          Boolean?  @default(true)
+  deleted_at      DateTime? @db.DateTime(0)
+  created_at      DateTime? @default(now()) @db.DateTime(0)
+  updated_at      DateTime? @default(now()) @db.DateTime(0)
+}
+
+model leave_year_config {
+  year             Int       @id
+  start_date       String    @db.VarChar(50)
+  end_date         String    @db.VarChar(50)
+  open_for_booking String    @db.VarChar(50)
+  archived         Boolean?  @default(false)
+  created_at       DateTime? @default(now()) @db.DateTime(0)
+  updated_at       DateTime? @default(now()) @db.DateTime(0)
+}
+
+model notifications {
+  id              String    @id @db.VarChar(255)
+  recipient_id    String    @db.VarChar(255)
+  recipient_email String    @db.VarChar(255)
+  type            String    @db.VarChar(100)
+  title           String    @db.VarChar(255)
+  message         String?   @db.Text
+  channel         String    @db.VarChar(50)
+  provider        String    @db.VarChar(50)
+  related_id      String?   @db.VarChar(255)
+  read            Boolean?  @default(false)
+  sent_at         DateTime? @db.DateTime(0)
+  created_at      DateTime? @default(now()) @db.DateTime(0)
+  users           users     @relation(fields: [recipient_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notifications_ibfk_1")
+
+  @@index([recipient_id], map: "recipient_id")
+}
+
+model penalties {
+  id                      String             @id @db.VarChar(255)
+  employee_id             String             @db.VarChar(255)
+  employee_name           String             @db.VarChar(255)
+  department              String             @db.VarChar(100)
+  penalty_type_code       String             @db.VarChar(50)
+  penalty_date            String             @db.VarChar(50)
+  severity                penalties_severity
+  reason                  String             @db.Text
+  attachment              String?            @db.Text
+  linked_leave_request_id String?            @db.VarChar(255)
+  created_by              String?            @db.VarChar(255)
+  created_at              DateTime?          @default(now()) @db.DateTime(0)
+  updated_at              DateTime?          @default(now()) @db.DateTime(0)
+  penalty_category        String?            @default("standard") @db.VarChar(50)
+  cash_amount             Decimal?           @default(0.00) @db.Decimal(10, 2)
+  penalty_types           penalty_types      @relation(fields: [penalty_type_code], references: [type_code], onDelete: NoAction, onUpdate: NoAction, map: "penalties_ibfk_1")
+  leave_requests          leave_requests?    @relation(fields: [linked_leave_request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "penalties_ibfk_2")
+  users                   users              @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "penalties_ibfk_3")
+
+  @@index([employee_id], map: "employee_id")
+  @@index([linked_leave_request_id], map: "linked_leave_request_id")
+  @@index([penalty_type_code], map: "penalty_type_code")
+}
+
+model penalty_types {
+  id               String                         @id @db.VarChar(100)
+  type_code        String                         @unique(map: "type_code") @db.VarChar(50)
+  type_name        String                         @db.VarChar(255)
+  default_severity penalty_types_default_severity
+  active           Boolean?                       @default(true)
+  created_at       DateTime?                      @default(now()) @db.DateTime(0)
+  updated_at       DateTime?                      @default(now()) @db.DateTime(0)
+  penalties        penalties[]
+}
+
+model performance_comments {
+  id           String    @id @default(dbgenerated("(uuid())")) @db.VarChar(36)
+  employee_id  String    @db.VarChar(255)
+  period_label String    @db.VarChar(50)
+  author_id    String    @db.VarChar(255)
+  author_name  String    @db.VarChar(255)
+  content      String    @db.Text
+  created_at   DateTime? @default(now()) @db.DateTime(0)
+  users        users     @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "performance_comments_ibfk_1")
+
+  @@index([employee_id], map: "employee_id")
+}
+
+model performance_config {
+  id          BigInt    @id @default(autoincrement())
+  config_key  String    @db.VarChar(100)
+  config_json Json      @default(dbgenerated("(json_object())"))
+  is_active   Boolean?  @default(true)
+  version_no  Int?      @default(1)
+  updated_by  String?   @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
+}
+
+model performance_inputs {
+  id                  String                         @id @db.VarChar(255)
+  employee_id         String                         @db.VarChar(255)
+  employee_name       String                         @db.VarChar(255)
+  department          String                         @db.VarChar(100)
+  period_type         performance_inputs_period_type
+  period_year         Int
+  period_no           Int
+  period_label        String                         @db.VarChar(50)
+  kpi_achieved        Decimal?                       @default(0.00) @db.Decimal(10, 2)
+  kpi_total           Decimal?                       @default(0.00) @db.Decimal(10, 2)
+  tasks_achieved      Decimal?                       @default(0.00) @db.Decimal(10, 2)
+  tasks_total         Decimal?                       @default(0.00) @db.Decimal(10, 2)
+  quality_total_tasks Decimal?                       @default(0.00) @db.Decimal(10, 2)
+  quality_errors      Decimal?                       @default(0.00) @db.Decimal(10, 2)
+  participation_json  Json?
+  popularity_json     Json?
+  updated_by          String?                        @db.VarChar(255)
+  created_at          DateTime?                      @default(now()) @db.DateTime(0)
+  updated_at          DateTime?                      @default(now()) @db.DateTime(0)
+  users               users                          @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "performance_inputs_ibfk_1")
+
+  @@index([employee_id], map: "employee_id")
+}
+
+model performance_scores {
+  id                    String                         @id @db.VarChar(255)
+  employee_id           String                         @db.VarChar(255)
+  employee_name         String                         @db.VarChar(255)
+  department            String                         @db.VarChar(100)
+  period_type           performance_scores_period_type
+  period_year           Int
+  period_no             Int
+  period_label          String                         @db.VarChar(50)
+  performance_60        Decimal?                       @default(0.00) @db.Decimal(6, 2)
+  participation_25      Decimal?                       @default(0.00) @db.Decimal(6, 2)
+  popularity_15         Decimal?                       @default(0.00) @db.Decimal(6, 2)
+  raw_score             Decimal?                       @default(0.00) @db.Decimal(6, 2)
+  penalty_deduction     Decimal?                       @default(0.00) @db.Decimal(6, 2)
+  final_score           Decimal?                       @default(0.00) @db.Decimal(6, 2)
+  manual_override_score Decimal?                       @db.Decimal(6, 2)
+  override_comment      String?                        @db.Text
+  formula_snapshot_json Json?
+  input_snapshot_json   Json?
+  status                performance_scores_status?     @default(calculated)
+  calculated_by         String?                        @db.VarChar(255)
+  calculated_at         DateTime?                      @db.DateTime(0)
+  approved_by           String?                        @db.VarChar(255)
+  approved_at           DateTime?                      @db.DateTime(0)
+  created_at            DateTime?                      @default(now()) @db.DateTime(0)
+  updated_at            DateTime?                      @default(now()) @db.DateTime(0)
+  users                 users                          @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "performance_scores_ibfk_1")
+
+  @@index([employee_id], map: "employee_id")
+}
+
+model performance_sheets {
+  year          Int       @id
+  columns_json  Json?     @default(dbgenerated("(json_array())"))
+  sections_json Json?     @default(dbgenerated("(json_array())"))
+  cells_json    Json?     @default(dbgenerated("(json_object())"))
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+}
+
+model profile_update_requests {
+  id                                               String                          @id @db.VarChar(255)
+  employee_id                                      String                          @db.VarChar(255)
+  requested_changes                                Json
+  status                                           profile_update_requests_status? @default(pending)
+  reviewed_by                                      String?                         @db.VarChar(255)
+  reviewed_at                                      DateTime?                       @db.DateTime(0)
+  review_comment                                   String?                         @db.Text
+  created_at                                       DateTime?                       @default(now()) @db.DateTime(0)
+  updated_at                                       DateTime?                       @default(now()) @db.DateTime(0)
+  users_profile_update_requests_employee_idTousers users                           @relation("profile_update_requests_employee_idTousers", fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "profile_update_requests_ibfk_1")
+  users_profile_update_requests_reviewed_byTousers users?                          @relation("profile_update_requests_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "profile_update_requests_ibfk_2")
+
+  @@index([employee_id], map: "employee_id")
+  @@index([reviewed_by], map: "reviewed_by")
+}
+
+model profiles {
+  id              String                    @id @db.VarChar(255)
+  employee_id     String?                   @db.VarChar(50)
+  full_name       String?                   @db.VarChar(255)
+  phone_number    String?                   @db.VarChar(20)
+  department      String?                   @db.VarChar(100)
+  role            profiles_role?
+  join_date       DateTime?                 @db.Date
+  preferred_theme profiles_preferred_theme? @default(light)
+  reports_to_id   String?                   @db.VarChar(255)
+  created_at      DateTime?                 @default(now()) @db.DateTime(0)
+  updated_at      DateTime?                 @default(now()) @db.DateTime(0)
+  users           users?                    @relation(fields: [reports_to_id], references: [id], onUpdate: NoAction, map: "profiles_ibfk_1")
+
+  @@index([reports_to_id], map: "reports_to_id")
+}
+
+model scoring_categories {
+  year          Int
+  id            String    @db.VarChar(100)
+  name          String    @db.VarChar(255)
+  weight        Int?      @default(0)
+  description   String?   @db.Text
+  color         String?   @db.VarChar(50)
+  display_order Int?      @default(0)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+
+  @@id([year, id])
+}
+
+model self_evaluations {
+  id           String    @id @default(dbgenerated("(uuid())")) @db.VarChar(36)
+  employee_id  String    @db.VarChar(255)
+  period_label String    @db.VarChar(50)
+  reflection   String?   @db.Text
+  hod_comment  String?   @db.Text
+  saved_at     DateTime? @default(now()) @db.DateTime(0)
+  users        users     @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "self_evaluations_ibfk_1")
+
+  @@index([employee_id], map: "employee_id")
+}
+
+model system_audit_logs {
+  log_id       BigInt    @id @default(autoincrement())
+  event_type   String    @db.VarChar(100)
+  action       String    @db.VarChar(100)
+  actor        String?   @default("system") @db.VarChar(255)
+  payload_json Json?
+  created_at   DateTime? @default(now()) @db.DateTime(0)
+}
+
+model system_settings {
+  setting_key  String   @id @db.VarChar(255)
+  setting_json Json?
+  updated_at   DateTime @default(now()) @db.DateTime(0)
+}
+
+model users {
+  id                                                                 String                              @id @db.VarChar(255)
+  name                                                               String                              @db.VarChar(255)
+  email                                                              String                              @unique(map: "email") @db.VarChar(255)
+  role                                                               users_role
+  dept                                                               String                              @default("") @db.VarChar(100)
+  status                                                             users_status                        @default(active)
+  join_date                                                          String                              @default("") @db.VarChar(50)
+  password                                                           String?                             @db.VarChar(255)
+  created_at                                                         DateTime?                           @default(now()) @db.DateTime(0)
+  updated_at                                                         DateTime?                           @default(now()) @db.DateTime(0)
+  reports_to_id                                                      String?                             @db.VarChar(255)
+  profile_update_status                                              users_profile_update_status?        @default(approved)
+  phone                                                              String?                             @db.VarChar(20)
+  address                                                            String?                             @db.Text
+  emergency_contact                                                  String?                             @db.Text
+  preferred_name                                                     String?                             @db.VarChar(100)
+  bank_details                                                       String?                             @db.Text
+  preferred_theme                                                    users_preferred_theme?
+  rewards                                                            Json?
+  achievements                                                       Json?
+  experience_in_office                                               Json?
+  mailing_address                                                    String?                             @db.Text
+  phone_number                                                       String?                             @db.VarChar(20)
+  department_id                                                      String?                             @db.VarChar(100)
+  employee_leave_attendance_records                                  employee_leave_attendance_records[]
+  employee_leave_entitlements                                        employee_leave_entitlements[]
+  employee_service_years                                             employee_service_years?
+  evaluation_attachments                                             evaluation_attachments[]
+  leave_balances                                                     leave_balances[]
+  leave_requests                                                     leave_requests[]
+  notifications                                                      notifications[]
+  penalties                                                          penalties[]
+  performance_comments                                               performance_comments[]
+  performance_inputs                                                 performance_inputs[]
+  performance_scores                                                 performance_scores[]
+  profile_update_requests_profile_update_requests_employee_idTousers profile_update_requests[]           @relation("profile_update_requests_employee_idTousers")
+  profile_update_requests_profile_update_requests_reviewed_byTousers profile_update_requests[]           @relation("profile_update_requests_reviewed_byTousers")
+  profiles                                                           profiles[]
+  self_evaluations                                                   self_evaluations[]
+  users                                                              users?                              @relation("usersTousers", fields: [reports_to_id], references: [id], onUpdate: NoAction, map: "users_ibfk_1")
+  other_users                                                        users[]                             @relation("usersTousers")
+
+  @@index([reports_to_id], map: "reports_to_id")
+}
+
+enum leave_request_days_slot {
+  AM
+  PM
+}
+
+enum penalty_types_default_severity {
+  low
+  medium
+  high
+}
+
+enum profile_update_requests_status {
+  pending
+  approved
+  rejected
+}
+
+enum users_role {
+  admin
+  hod
+  employee
+  intern
+  probation
+}
+
+enum leave_approvals_action {
+  pending
+  approved
+  rejected
+}
+
+enum performance_inputs_period_type {
+  monthly
+  quarterly
+  yearly
+}
+
+enum performance_scores_period_type {
+  monthly
+  quarterly
+  yearly
+}
+
+enum profiles_role {
+  employee
+  hod
+  admin
+  intern
+}
+
+enum users_status {
+  active
+  inactive
+  pending
+}
+
+enum penalties_severity {
+  low
+  medium
+  high
+}
+
+enum profiles_preferred_theme {
+  light
+  dark
+}
+
+enum users_profile_update_status {
+  pending
+  approved
+}
+
+enum users_preferred_theme {
+  light
+  dark
+}
+
+enum performance_scores_status {
+  calculated
+  approved
+  overridden
+}

@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: Employee Performance and HR Management API
+  version: 1.0.0
+  description: |
+    Integrated API for 3Ps performance scoring, penalties, unified employee profile,
+    and reporting/export.
+servers:
+  - url: http://localhost:4028
+components:
+  parameters:
+    RoleHeader:
+      in: header
+      name: x-user-role
+      required: true
+      schema:
+        type: string
+        enum: [employee, hod, admin]
+      description: API role guard header used by route authorization.
+  schemas:
+    PerformanceScore:
+      type: object
+      properties:
+        id: { type: string }
+        employeeId: { type: string }
+        employeeName: { type: string }
+        department: { type: string }
+        periodType: { type: string, enum: [monthly, quarterly, yearly] }
+        periodYear: { type: integer }
+        periodNo: { type: integer }
+        periodLabel: { type: string }
+        performance60: { type: number }
+        participation25: { type: number }
+        popularity15: { type: number }
+        penaltyDeduction: { type: number }
+        finalScore: { type: number }
+        status: { type: string, enum: [calculated, approved, overridden] }
+    Penalty:
+      type: object
+      properties:
+        id: { type: string }
+        employeeId: { type: string }
+        employeeName: { type: string }
+        department: { type: string }
+        penaltyTypeCode: { type: string }
+        penaltyDate: { type: string, format: date }
+        severity: { type: string, enum: [low, medium, high] }
+        points: { type: number }
+        deductionMode: { type: string, enum: [fixed, percent] }
+        deductionValue: { type: number }
+        reason: { type: string }
+        status: { type: string, enum: [active, resolved] }
+paths:
+  /api/performance-management:
+    get:
+      summary: Performance and HR management query API
+      parameters:
+        - $ref: '#/components/parameters/RoleHeader'
+        - in: query
+          name: mode
+          required: true
+          schema:
+            type: string
+            enum: [config, scores, penalty-types, penalties, report, profile, service-years]
+        - in: query
+          name: employeeId
+          schema: { type: string }
+        - in: query
+          name: periodType
+          schema:
+            type: string
+            enum: [monthly, quarterly, yearly]
+        - in: query
+          name: periodYear
+          schema: { type: integer }
+        - in: query
+          name: periodNo
+          schema: { type: integer }
+        - in: query
+          name: year
+          schema: { type: integer }
+        - in: query
+          name: reportMode
+          schema:
+            type: string
+            enum: [employee-performance, dept-leave-performance-correlation, penalty-summary, year-end-summary]
+        - in: query
+          name: export
+          schema:
+            type: string
+            enum: [pdf, excel]
+          description: When set, returns binary file response for report mode.
+      responses:
+        '200':
+          description: Query success
+          content:
+            application/json:
+              examples:
+                scores:
+                  summary: mode=scores response
+                  value:
+                    scores:
+                      - id: PSC-123
+                        employeeId: e-001
+                        employeeName: Nurul Ain
+                        department: Operations
+                        periodType: monthly
+                        periodYear: 2026
+                        periodNo: 4
+                        periodLabel: 2026-04
+                        performance60: 50.2
+                        participation25: 21.5
+                        popularity15: 10
+                        penaltyDeduction: 2
+                        finalScore: 79.7
+                        status: approved
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+    post:
+      summary: Performance and HR management mutation API
+      parameters:
+        - $ref: '#/components/parameters/RoleHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            examples:
+              upsertConfig:
+                summary: Update 3Ps config
+                value:
+                  action: upsert-config
+                  actor: admin-ui
+                  config:
+                    weights:
+                      performance: 60
+                      participation: 25
+                      popularity: 15
+              upsertInput:
+                summary: Save input for 3Ps calculation
+                value:
+                  action: upsert-input
+                  actor: u-001
+                  employeeId: e-001
+                  employeeName: Nurul Ain
+                  department: Operations
+                  periodType: monthly
+                  periodYear: 2026
+                  periodNo: 4
+                  kpiAchieved: 35
+                  kpiTotal: 40
+                  tasksAchieved: 42
+                  tasksTotal: 45
+                  qualityTotalTasks: 45
+                  qualityErrors: 3
+                  participation:
+                    PLAY_ATTENDANCE: 3
+                    PLAY_WINNER: 1
+                    LEARN_ATTENDANCE: 2
+                    HCM_STICKERS: 4
+                  popularity:
+                    GRATITUDE_STICKER: 1
+                    VOTING_FORM: 2
+              createPenalty:
+                summary: Create penalty record
+                value:
+                  action: create-penalty
+                  actor: u-001
+                  employeeId: e-001
+                  employeeName: Nurul Ain
+                  department: Operations
+                  penaltyTypeCode: LATE
+                  penaltyDate: '2026-04-14'
+                  severity: medium
+                  points: 2
+                  deductionMode: fixed
+                  deductionValue: 2
+                  reason: Repeated late attendance
+                  status: active
+      responses:
+        '200':
+          description: Mutation success
+          content:
+            application/json:
+              schema:
+                type: object
+        '201':
+          description: Resource created
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/employee-profile:
+    get:
+      summary: Unified employee profile (Leave + Performance + Penalties)
+      parameters:
+        - $ref: '#/components/parameters/RoleHeader'
+        - in: query
+          name: employeeId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: year
+          schema: { type: integer }
+        - in: query
+          name: periodType
+          schema:
+            type: string
+            enum: [monthly, quarterly, yearly]
+      responses:
+        '200':
+          description: Unified profile payload
+          content:
+            application/json:
+              examples:
+                profile:
+                  value:
+                    profile:
+                      employeeId: e-001
+                      year: 2026
+                      summary:
+                        latestFinalScore: 82.5
+                        latestScoreStatus: approved
+                        approvedLeaveUnits: 6
+                        totalPenalties: 2
+                        activePenalties: 1
+                      leaveHistory: []
+                      performance: []
+                      penalties: []
+  /api/penalties:
+    get:
+      summary: Legacy penalty list (mapped to new penalty model)
+      parameters:
+        - $ref: '#/components/parameters/RoleHeader'
+      responses:
+        '200':
+          description: Penalty list
+    post:
+      summary: Legacy penalty create (mapped to new penalty model)
+      parameters:
+        - $ref: '#/components/parameters/RoleHeader'
+      responses:
+        '201':
+          description: Penalty created
