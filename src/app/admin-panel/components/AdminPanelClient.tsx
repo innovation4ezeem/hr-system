@@ -689,15 +689,16 @@ function UsersPanel() {
             </p>
           </div>
         )}
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ borderBottom: '1px solid rgb(var(--border-subtle))' }}>
-              {['Name', 'Email', 'Role', 'Reports To', 'Department', 'Status', 'Joined', 'Actions'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs whitespace-nowrap">
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgb(var(--border-subtle))' }}>
+                {['Name', 'Email', 'Role', 'Reports To', 'Department', 'Status', 'Joined', 'Actions'].map(h => (
+                  <th key={h} className="px-2 py-2 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
             {filteredUsers.map((user, idx) => {
               const rc = roleColor(user.role);
               const sc = statusColor(user.status);
@@ -712,7 +713,7 @@ function UsersPanel() {
                     background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
                     opacity: isInactive ? 0.7 : 1
                   }}>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -724,12 +725,12 @@ function UsersPanel() {
                       {user.name}
                     </button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <span className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
                       {user.email}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <select 
                       value={user.role} 
                       onChange={e => handleEdit(user.id, { role: e.target.value as any })}
@@ -744,7 +745,7 @@ function UsersPanel() {
                       <option value="admin">Admin</option>
                     </select>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <select
                       value={user.reportsToId || ''}
                       onChange={e => handleEdit(user.id, { reportsToId: e.target.value || null })}
@@ -758,7 +759,7 @@ function UsersPanel() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <select 
                       value={user.dept} 
                       onChange={e => {
@@ -777,7 +778,7 @@ function UsersPanel() {
                       {!depts.some(d => d.name === user.dept) && <option value={user.dept}>{user.dept}</option>}
                     </select>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <select 
                       value={user.status} 
                       onChange={e => handleEdit(user.id, { status: e.target.value as User['status'] })}
@@ -791,7 +792,7 @@ function UsersPanel() {
                       <option value="terminated">Terminated</option>
                     </select>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2">
                     <input 
                       type="date"
                       value={user.joinDate || ''} 
@@ -804,7 +805,7 @@ function UsersPanel() {
                       style={{ width: '130px', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--border-subtle))' }} 
                     />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-2 py-2 text-right">
                     <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteId(user.id); }} className="p-1.5 rounded hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100" style={{ color: 'rgb(248 113 113)' }}>
                       <Icon name="TrashIcon" size={14} />
                     </button>
@@ -814,6 +815,7 @@ function UsersPanel() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       <ConfirmModal
