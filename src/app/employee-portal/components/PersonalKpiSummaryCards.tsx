@@ -15,7 +15,7 @@ interface PersonalKpiSummaryCardsProps {
   leaveHistory?: any[];
   wfhUsed?: number;
   wfhLimit?: number;
-  onCardClick?: (tab: 'evaluation' | 'leave' | 'penalties') => void;
+  onCardClick?: (tab: 'activities' | 'leave' | 'penalties' | 'evaluation') => void;
 }
 
 export default function PersonalKpiSummaryCards({ 
@@ -76,7 +76,7 @@ export default function PersonalKpiSummaryCards({
       icon: 'ChartBarIcon' as const,
       sparkColor: '#4F7FFF',
       data: getSparklineData('score', summary?.latestFinalScore ?? 0),
-      tab: 'evaluation' as const
+      tab: 'activities' as const
     },
     {
       id: 'personal-leave',

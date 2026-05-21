@@ -55,12 +55,19 @@ export type EvaluationSection = {
   id: string;
   title: string;
   attributes: Array<{ id: string; label: string; description?: string }>;
+  assignedEmployeeIds?: string[];
 };
 
 export type GeneralSettings = {
   performanceFormUrl: string;
   performanceFormLabel: string;
   evaluationSections?: EvaluationSection[];
+  showAttendedCourse?: boolean;
+  showColleagueVoting?: boolean;
+  courseTitle?: string;
+  courseDescription?: string;
+  votingTitle?: string;
+  votingDescription?: string;
 };
 
 export type SystemSettingsRecord = {
@@ -158,24 +165,9 @@ export const SYSTEM_SETTINGS_DEFAULTS: SystemSettingsRecord = {
   general: {
     performanceFormUrl: `https://forms.gle/ezeem-performance-${new Date().getFullYear()}`,
     performanceFormLabel: `${new Date().getFullYear()} Annual Performance Form`,
-    evaluationSections: [
-      {
-        id: 'sec-1',
-        title: 'Core Performance Attributes',
-        attributes: [
-          { id: 'attr-1', label: 'Quality of Work', description: 'Accuracy, thoroughness and reliability of work produced.' },
-          { id: 'attr-2', label: 'Efficiency & Speed', description: 'Ability to complete tasks within reasonable timeframes.' }
-        ]
-      },
-      {
-        id: 'sec-2',
-        title: 'Culture & Values',
-        attributes: [
-          { id: 'attr-3', label: 'Collaboration', description: 'Working effectively with team members and other departments.' },
-          { id: 'attr-4', label: 'Proactiveness', description: 'Taking initiative to improve processes or solve problems.' }
-        ]
-      }
-    ]
+    evaluationSections: [],
+    showAttendedCourse: true,
+    showColleagueVoting: true
   },
 };
 

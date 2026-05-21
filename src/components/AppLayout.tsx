@@ -22,6 +22,14 @@ export default function AppLayout({ children, role, activeRoute }: AppLayoutProp
   React.useEffect(() => {
     if (contextLoading) return;
 
+    // Check if user is logged in
+    const isLoggedIn = typeof window !== 'undefined' && (document.cookie.includes('ezeem_user_id') || localStorage.getItem('ezeem_user_id'));
+    if (!isLoggedIn) {
+      const targetUrl = encodeURIComponent(window.location.pathname + window.location.search);
+      router.push(`/?redirect=${targetUrl}`);
+      return;
+    }
+
     if (role && userRole && role !== userRole) {
       // If we are on an Admin page but user is not Admin
       if (role === 'admin' && userRole !== 'admin') {
@@ -32,8 +40,9 @@ export default function AppLayout({ children, role, activeRoute }: AppLayoutProp
         router.push('/employee-portal');
       }
       // If we are an Admin but land on HOD/Employee page
-      else if (userRole === 'admin' && role !== 'admin') {
-        router.push('/admin-panel');
+      else if (userRole === 'admin' && role !== 'admin' && role !== 'hod') {
+        const search = window.location.search;
+        router.push(`/admin-panel${search}`);
       }
     }
   }, [role, userRole, contextLoading, router]);

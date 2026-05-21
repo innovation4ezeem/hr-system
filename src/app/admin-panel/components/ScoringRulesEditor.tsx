@@ -192,14 +192,15 @@ export const ScoringRulesEditor: React.FC<ScoringRulesEditorProps> = ({ onClose,
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+      <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: 'rgb(var(--border-subtle))' }}>
         <div>
-          <h2 className="text-lg font-bold text-white">System Framework - Scoring Rules</h2>
-          <p className="text-xs text-slate-500 mt-1">Define standard marks for each activity bucket</p>
+          <h2 className="text-lg font-bold" style={{ color: 'rgb(var(--text-primary))' }}>System Framework - Scoring Rules</h2>
+          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-muted))' }}>Define standard marks for each activity bucket</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-400 border border-white/5 transition-all flex items-center gap-2"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 border bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-400"
+            style={{ borderColor: 'rgb(var(--border))' }}
             onClick={handleResetToDefaults}
             disabled={saving}
           >
@@ -207,7 +208,7 @@ export const ScoringRulesEditor: React.FC<ScoringRulesEditorProps> = ({ onClose,
             Reset to Defaults
           </button>
           <button 
-            className="p-1 hover:bg-white/5 rounded-full transition-colors"
+            className="p-1 hover:bg-slate-250 dark:hover:bg-white/5 rounded-full transition-colors"
             onClick={onClose}
           >
             <Icon name="XMarkIcon" size={20} className="text-slate-500" />
@@ -234,29 +235,29 @@ export const ScoringRulesEditor: React.FC<ScoringRulesEditorProps> = ({ onClose,
                 </h3>
                 <button 
                   onClick={() => setShowAddModal(cat)}
-                  className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"
+                  className="p-1 rounded bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-white/50 hover:text-slate-900 dark:hover:text-white transition-all"
                   title={`Add rule to ${cat}`}
                 >
                   <Icon name="PlusIcon" size={14} />
                 </button>
               </div>
               
-              <div className="bg-slate-900/50 border border-white/5 rounded-b-xl overflow-hidden min-h-[100px]">
+              <div className="border rounded-b-xl overflow-hidden min-h-[100px]" style={{ backgroundColor: 'rgb(var(--bg-card))', borderColor: 'rgb(var(--border-subtle))' }}>
                 <table className="w-full text-xs">
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y" style={{ borderColor: 'rgb(var(--border-subtle))' }}>
                     {buckets.length === 0 ? (
                       <tr>
-                        <td className="px-3 py-6 text-center text-slate-600 italic">No rules defined</td>
+                        <td className="px-3 py-6 text-center italic" style={{ color: 'rgb(var(--text-muted))' }}>No rules defined</td>
                       </tr>
                     ) : (
                       buckets.map(bucket => (
-                        <tr key={bucket} className="hover:bg-white/[0.02] group transition-colors">
-                          <td className="px-3 py-3 text-slate-300 font-medium">
+                        <tr key={bucket} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] group transition-colors">
+                          <td className="px-3 py-3 font-medium" style={{ color: 'rgb(var(--text-secondary))' }}>
                             <div className="flex items-center justify-between gap-2">
                               <span>{bucket}</span>
                               <button 
                                 onClick={() => setDeleteConfirm(bucket)}
-                                className="opacity-0 group-hover:opacity-100 p-1 rounded text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded text-red-500/50 hover:text-red-500 hover:bg-red-500/10 dark:text-red-400/50 dark:hover:text-red-400 dark:hover:bg-red-400/10 transition-all"
                               >
                                 <Icon name="TrashIcon" size={12} />
                               </button>
@@ -268,10 +269,10 @@ export const ScoringRulesEditor: React.FC<ScoringRulesEditorProps> = ({ onClose,
                                 type="number"
                                 initialValue={String(marks[bucket] ?? 0)}
                                 onSave={(val) => updateMark(bucket, val)}
-                                textClassName="w-full text-center font-mono font-bold text-white"
-                                className="bg-slate-800 border border-white/10 rounded"
+                                textClassName="w-full text-center font-mono font-bold text-slate-800 dark:text-white"
+                                className="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-white/10 rounded"
                               />
-                              <span className="absolute -right-2 top-1.5 text-[8px] font-bold text-slate-600 uppercase">pts</span>
+                              <span className="absolute -right-2 top-1.5 text-[8px] font-bold uppercase" style={{ color: 'rgb(var(--text-muted))' }}>pts</span>
                             </div>
                           </td>
                         </tr>
@@ -285,10 +286,11 @@ export const ScoringRulesEditor: React.FC<ScoringRulesEditorProps> = ({ onClose,
         })}
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+      <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: 'rgb(var(--border-subtle))' }}>
         <button 
           onClick={onClose}
-          className="px-6 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-bold text-white transition-all flex items-center gap-2"
+          className="px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 border bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white"
+          style={{ borderColor: 'rgb(var(--border))' }}
         >
           Close Editor
         </button>
@@ -297,14 +299,14 @@ export const ScoringRulesEditor: React.FC<ScoringRulesEditorProps> = ({ onClose,
       {/* Add Rule Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4">Add Rule to {showAddModal}</h3>
+          <div className="border rounded-2xl p-6 w-full max-w-sm shadow-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10">
+            <h3 className="text-base font-bold mb-4 text-slate-800 dark:text-white">Add Rule to {showAddModal}</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Rule Name</label>
                 <input 
                   autoFocus
-                  className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  className="w-full rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 bg-slate-100 dark:bg-slate-800 border border-slate-350 dark:border-white/10 text-slate-800 dark:text-white"
                   placeholder="e.g. Extra Mile Bonus"
                   value={newBucketName}
                   onChange={e => setNewBucketName(e.target.value)}
@@ -314,7 +316,7 @@ export const ScoringRulesEditor: React.FC<ScoringRulesEditorProps> = ({ onClose,
                 <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Default Points</label>
                 <input 
                   type="number"
-                  className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  className="w-full rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 bg-slate-100 dark:bg-slate-800 border border-slate-350 dark:border-white/10 text-slate-800 dark:text-white"
                   value={newBucketPoints}
                   onChange={e => setNewBucketPoints(parseInt(e.target.value) || 0)}
                 />
@@ -322,7 +324,7 @@ export const ScoringRulesEditor: React.FC<ScoringRulesEditorProps> = ({ onClose,
               <div className="flex gap-3 pt-2">
                 <button 
                   onClick={() => setShowAddModal(null)}
-                  className="flex-1 px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:bg-white/5"
+                  className="flex-1 px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5"
                 >
                   Cancel
                 </button>

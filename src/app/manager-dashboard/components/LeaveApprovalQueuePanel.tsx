@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { buildClientAuthHeaders, readClientIdentity } from '@/lib/clientAuth';
 import Icon from '@/components/ui/AppIcon';
 import { useAppContext } from '@/context/AppContext';
@@ -181,6 +181,8 @@ export default function LeaveApprovalQueuePanel() {
     void loadRequests();
   }, [statusFilter, selectedLeaveType, selectedEmploymentType, dateRange, customDateStart, customDateEnd, employeeSearchQuery, authHeaders]);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Handle direct actions from email links
   useEffect(() => {
@@ -191,19 +193,41 @@ export default function LeaveApprovalQueuePanel() {
 
     if (targetId && action) {
       const targetReq = requests.find(r => r.id === targetId);
-      if (targetReq && targetReq.status === 'pending') {
-        if (action === 'approve') {
-          handleApprove(targetReq);
-        } else if (action === 'reject') {
-          setSelectedRequest(targetReq);
-          setModalMode('reject');
+      
+      const cleanUrl = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('requestId');
+        params.delete('action');
+        const newSearch = params.toString();
+        router.replace(newSearch ? `${pathname}?${newSearch}` : pathname);
+      };
+
+      if (targetReq) {
+        if (targetReq.status === 'pending') {
+          if (action === 'approve') {
+            handleApprove(targetReq);
+            cleanUrl();
+          } else if (action === 'reject') {
+            setSelectedRequest(targetReq);
+            setModalMode('reject');
+            cleanUrl();
+          }
+        } else {
+          toast.success(`Request is already processed (Status: ${targetReq.status})`);
+          cleanUrl();
         }
-      } else if (targetId && !targetReq && statusFilter !== 'All') {
-          // If request not found in pending, maybe try showing all
+      } else {
+        if (statusFilter !== 'All') {
+          // If request not found in pending, try showing all to see if it was already processed
           setStatusFilter('All');
+        } else {
+          // Not found even in All
+          toast.error(`Request ${targetId} not found in the list.`);
+          cleanUrl();
+        }
       }
     }
-  }, [loading, requests.length, searchParams]);
+  }, [loading, requests.length, searchParams, statusFilter, pathname, router]);
 
   const handleApprove = async (req: LeaveRequest) => {
     setProcessingId(req.id);

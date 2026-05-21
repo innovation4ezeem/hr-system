@@ -50,7 +50,10 @@ export async function GET(request: NextRequest) {
       if (!recordId) return NextResponse.json({ error: 'Record id required' }, { status: 400 });
       
       const allLogs = await listSystemAuditLogs(100, 'performance-score');
-      const filtered = allLogs.filter(log => log.payload?.id === recordId);
+      const filtered = allLogs.filter(log => {
+        const payload = log.payload as any;
+        return payload?.id === recordId;
+      });
       return NextResponse.json({ logs: filtered }, { status: 200 });
     }
 

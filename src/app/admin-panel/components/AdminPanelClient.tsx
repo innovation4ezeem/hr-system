@@ -12,6 +12,7 @@ const AdminProfileReviewPanel = dynamic(() => import('./AdminProfileReviewPanel'
 const ActivityAuditLogPanel = dynamic(() => import('./ActivityAuditLogPanel'), { ssr: false });
 const ScoringFormulaCard = dynamic(() => import('./ScoringFormulaCard'), { ssr: false });
 const ScoringRulesEditor = dynamic(() => import('./ScoringRulesEditor').then(m => m.ScoringRulesEditor), { ssr: false });
+const EvaluationFormBuilder = dynamic(() => import('./EvaluationFormBuilder'), { ssr: false });
 import { toast } from 'sonner';
 import { useAppContext } from '@/context/AppContext';
 import { PERFORMANCE_MONTHS } from '@/data/performanceScores';
@@ -20,7 +21,7 @@ import InlineEditableField from '@/components/ui/InlineEditableField';
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type AdminTab = 'users' | 'profile-updates' | 'departments' | 'scoring' | 'performance' | 'leave' | 'audit';
+type AdminTab = 'users' | 'profile-updates' | 'departments' | 'scoring' | 'performance' | 'leave' | 'audit' | 'attributes';
 
 interface YearEntry {
   year: number;
@@ -278,6 +279,24 @@ function UsersPanel() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const addFormRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showAdd) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addFormRef.current && !addFormRef.current.contains(e.target as Node)) {
+        if (e.target instanceof Element && e.target.closest('.btn-primary')) {
+          return;
+        }
+        setShowAdd(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAdd]);
+
   const [saveStatus, setSaveStatus] = useState<'saved' | 'draft' | 'saving'>('saved');
   const [newUser, setNewUser] = useState<Partial<User & { password?: string; sendNotification?: boolean }>>({
     role: 'employee',
@@ -558,7 +577,7 @@ function UsersPanel() {
               type="checkbox"
               checked={showInactive}
               onChange={e => setShowInactive(e.target.checked)}
-              className="rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-blue-500"
+              className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-blue-500 focus:ring-blue-500"
             />
             <span className="text-xs font-medium" style={{ color: 'rgb(var(--text-secondary))' }}>Include Inactive</span>
           </label>
@@ -571,7 +590,7 @@ function UsersPanel() {
 
       {/* Add User Form */}
       {showAdd && (
-        <div className="rounded-xl p-4 animate-fade-in" style={{ background: 'rgba(79,127,255,0.05)', border: '1px solid rgba(79,127,255,0.2)' }}>
+        <div ref={addFormRef} className="rounded-xl p-4 animate-fade-in" style={{ background: 'rgba(79,127,255,0.05)', border: '1px solid rgba(79,127,255,0.2)' }}>
           <h4 className="text-sm font-semibold mb-3" style={{ color: 'rgb(79 127 255)' }}>New User</h4>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -644,7 +663,7 @@ function UsersPanel() {
                   type="checkbox" 
                   checked={(newUser as any).sendNotification} 
                   onChange={e => setNewUser(p => ({ ...p, sendNotification: e.target.checked }))}
-                  className="rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-blue-500" 
+                  className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-blue-500 focus:ring-blue-500" 
                 />
                 <span className="text-xs font-medium group-hover:text-blue-400 transition-colors" style={{ color: 'rgb(var(--text-primary))' }}>
                   Send automated welcome notification to employee email
@@ -714,16 +733,12 @@ function UsersPanel() {
                     opacity: isInactive ? 0.7 : 1
                   }}>
                   <td className="px-2 py-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const masked = btoa(user.id).replace(/=/g, '');
-                        router.push(`/admin-panel/users/${masked}`);
-                      }}
-                      className={`text-left font-bold hover:text-blue-400 hover:underline transition-colors ${isInactive ? 'text-slate-400' : 'text-blue-500 dark:text-blue-400'}`}
+                    <Link
+                      href={`/admin-panel/users/${btoa(user.id).replace(/=/g, '')}`}
+                      className={`text-left font-bold hover:text-blue-400 hover:underline transition-colors block ${isInactive ? 'text-slate-400' : 'text-blue-500 dark:text-blue-400'}`}
                     >
                       {user.name}
-                    </button>
+                    </Link>
                   </td>
                   <td className="px-2 py-2">
                     <span className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
@@ -840,6 +855,24 @@ function DepartmentsPanel() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editDept, setEditDept] = useState<Department | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const addDeptFormRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showAdd) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addDeptFormRef.current && !addDeptFormRef.current.contains(e.target as Node)) {
+        if (e.target instanceof Element && e.target.closest('.btn-primary')) {
+          return;
+        }
+        setShowAdd(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAdd]);
+
   const [saveStatus, setSaveStatus] = useState<'saved' | 'draft' | 'saving'>('saved');
   const [newDept, setNewDept] = useState<Partial<Department>>({ status: 'active', hodName: 'Pending Assignment' });
   const [viewingEmployees, setViewingEmployees] = useState<Department | null>(null);
@@ -988,7 +1021,7 @@ function DepartmentsPanel() {
       </div>
 
       {showAdd && (
-        <div className="rounded-xl p-4 animate-fade-in" style={{ background: 'rgba(79,127,255,0.05)', border: '1px solid rgba(79,127,255,0.2)' }}>
+        <div ref={addDeptFormRef} className="rounded-xl p-4 animate-fade-in" style={{ background: 'rgba(79,127,255,0.05)', border: '1px solid rgba(79,127,255,0.2)' }}>
           <h4 className="text-sm font-semibold mb-3" style={{ color: 'rgb(79 127 255)' }}>New Department</h4>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1448,6 +1481,24 @@ function ScoringPanel({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const addCatFormRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showAdd) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addCatFormRef.current && !addCatFormRef.current.contains(e.target as Node)) {
+        if (e.target instanceof Element && e.target.closest('.btn-primary')) {
+          return;
+        }
+        setShowAdd(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAdd]);
+
   const [saveStatus, setSaveStatus] = useState<'saved' | 'draft' | 'saving'>('saved');
   const [newCat, setNewCat] = useState<Partial<ScoringCategory>>({ color: 'rgb(79 127 255)', weight: 10 });
   const [dragId, setDragId] = useState<string | null>(null);
@@ -1648,7 +1699,7 @@ function ScoringPanel({
       )}
 
       {showAdd && (
-        <div className="rounded-xl p-4 animate-fade-in" style={{ background: 'rgba(79,127,255,0.05)', border: '1px solid rgba(79,127,255,0.2)' }}>
+        <div ref={addCatFormRef} className="rounded-xl p-4 animate-fade-in" style={{ background: 'rgba(79,127,255,0.05)', border: '1px solid rgba(79,127,255,0.2)' }}>
           <h4 className="text-sm font-semibold mb-3" style={{ color: 'rgb(79 127 255)' }}>New Category</h4>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1686,7 +1737,7 @@ function ScoringPanel({
       )}
 
       {showRules && (
-        <div className="rounded-xl p-6 shadow-2xl border border-white/5 bg-slate-900/40 backdrop-blur-xl animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="rounded-xl p-6 shadow-2xl border bg-white dark:bg-slate-900/40 border-slate-200 dark:border-white/5 backdrop-blur-xl animate-in fade-in slide-in-from-top-4 duration-300">
           <ScoringRulesEditor 
             onClose={() => setShowRules(false)}
             authHeaders={authHeaders}
@@ -2082,6 +2133,7 @@ export function AdminPanelSectionClient({ fixedTab, showTabNavigation = false }:
     { key: 'scoring', label: 'Scoring Categories', icon: 'AdjustmentsHorizontalIcon' },
     { key: 'performance', label: 'Performance Scores', icon: 'TableCellsIcon' },
     { key: 'leave', label: 'Leave Control', icon: 'CalendarDaysIcon' },
+    { key: 'attributes', label: 'Evaluation Forms', icon: 'DocumentTextIcon' },
     { key: 'audit', label: 'Audit Trail', icon: 'ClipboardDocumentCheckIcon' },
   ];
 
@@ -2134,7 +2186,7 @@ function AdminPanelSections({
                 type="checkbox"
                 checked={silentMode}
                 onChange={e => setSilentMode(e.target.checked)}
-                className="rounded border-slate-700 bg-slate-800 text-red-500 focus:ring-red-500"
+                className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-red-500 focus:ring-red-500"
               />
               <span className="text-xs font-bold uppercase tracking-wider" style={{ color: silentMode ? 'rgb(239 68 68)' : 'rgb(var(--text-secondary))' }}>
                 {silentMode ? 'Silent Mode ON' : 'Silent Mode'}
@@ -2170,6 +2222,7 @@ function AdminPanelSections({
           {activeTab === 'scoring' && <ScoringPanel selectedYear={selectedYear} setSelectedYear={setSelectedYear} years={years} setYears={setYears} />}
           {activeTab === 'performance' && <PerformancePanel selectedYear={selectedYear} />}
           {activeTab === 'leave' && <LeaveControlRoom />}
+          {activeTab === 'attributes' && <EvaluationFormBuilder />}
           {activeTab === 'audit' && <ActivityAuditLogPanel />}
         </div>
       </div>

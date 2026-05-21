@@ -21,20 +21,64 @@ interface SelfEvaluationSectionProps {
   general?: { 
     performanceFormUrl: string; 
     performanceFormLabel: string;
-    evaluationSections?: Array<{ id: string; title: string; attributes: Array<{ id: string; label: string; description?: string }> }>;
+    evaluationSections?: Array<{ 
+      id: string; 
+      title: string; 
+      attributes: Array<{ id: string; label: string; description?: string }>;
+      assignedEmployeeIds?: string[];
+    }>;
   };
   periodLabel?: string;
+  forceSelfView?: boolean;
 }
 
 type SubTab = 'overview' | 'discussion';
 
+const votingCategories = [
+  {
+    key: 'accountability',
+    label: '1. Accountability (Responsible towards own responsibility)',
+    reasonLabel: '1. Supporting reasons for Accountability',
+  },
+  {
+    key: 'sharpen_the_saw',
+    label: '2. Sharpen The Saw (Continuous Learner)',
+    reasonLabel: '2. Supporting reason for Sharpen The Saw',
+  },
+  {
+    key: 'innovative',
+    label: '3. Innovative & Creativity',
+    reasonLabel: '3. Supporting reason for Innovative & Creativity',
+  },
+  {
+    key: 'collaboration',
+    label: '4. Collaboration (Effective Collaborator)',
+    reasonLabel: '4. Supporting reason for collaboration (effective collaborator)',
+  },
+  {
+    key: 'initiative',
+    label: '5. Initiative',
+    reasonLabel: '5. Supporting reason for Initiative',
+  },
+];
+
 export default function SelfEvaluationSection({ 
   isArchive = false, 
   general, 
-  periodLabel: propPeriodLabel 
+  periodLabel: propPeriodLabel,
+  forceSelfView = false
 }: SelfEvaluationSectionProps) {
   const { selectedYear, userRole, userName, userId, userDepartment, buildAuthHeaders } = useAppContext();
-  const isHodView = userRole === 'hod' || userRole === 'admin';
+  const [candidates, setCandidates] = useState<{ id: string; name: string }[]>([]);
+  const [votes, setVotes] = useState<Record<string, { candidateId: string; reason: string }>>({
+    accountability: { candidateId: '', reason: '' },
+    sharpen_the_saw: { candidateId: '', reason: '' },
+    innovative: { candidateId: '', reason: '' },
+    collaboration: { candidateId: '', reason: '' },
+    initiative: { candidateId: '', reason: '' },
+  });
+  const [savingVotes, setSavingVotes] = useState(false);
+  const isHodView = (userRole === 'hod' || userRole === 'admin') && !forceSelfView;
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('discussion');
   const [reflection, setReflection] = useState('');
   const [hodComment, setHodComment] = useState('');
@@ -44,6 +88,44 @@ export default function SelfEvaluationSection({
   const [attachments, setAttachments] = useState<HodAttachment[]>([]);
   const [employees, setEmployees] = useState<{ id: string; name: string }[]>([]);
   const [targetEmployee, setTargetEmployee] = useState('');
+  const effectiveEmployeeId = (isHodView && targetEmployee) ? targetEmployee : userId;
+
+  const [attendedCourse, setAttendedCourse] = useState('');
+  const [courseCertName, setCourseCertName] = useState('');
+  const [courseCertUrl, setCourseCertUrl] = useState('');
+  const [plgtPlay, setPlgtPlay] = useState('');
+  const [plgtPlayPhotoName, setPlgtPlayPhotoName] = useState('');
+  const [plgtPlayPhotoUrl, setPlgtPlayPhotoUrl] = useState('');
+  const [savingForm, setSavingForm] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (reflection && reflection.trim().startsWith('{')) {
+        const parsed = JSON.parse(reflection);
+        setAttendedCourse(parsed.attendedCourse || '');
+        setCourseCertName(parsed.courseCertName || '');
+        setCourseCertUrl(parsed.courseCertUrl || '');
+        setPlgtPlay(parsed.plgtPlay || '');
+        setPlgtPlayPhotoName(parsed.plgtPlayPhotoName || '');
+        setPlgtPlayPhotoUrl(parsed.plgtPlayPhotoUrl || '');
+      } else {
+        setAttendedCourse(reflection || '');
+        setCourseCertName('');
+        setCourseCertUrl('');
+        setPlgtPlay('');
+        setPlgtPlayPhotoName('');
+        setPlgtPlayPhotoUrl('');
+      }
+    } catch (e) {
+      console.error("Failed to parse reflection JSON:", e);
+      setAttendedCourse(reflection || '');
+      setCourseCertName('');
+      setCourseCertUrl('');
+      setPlgtPlay('');
+      setPlgtPlayPhotoName('');
+      setPlgtPlayPhotoUrl('');
+    }
+  }, [reflection]);
   const [attachmentNote, setAttachmentNote] = useState('');
   const [selectedFileName, setSelectedFileName] = useState<string>('');
   const [editingSettings, setEditingSettings] = useState(false);
@@ -51,6 +133,8 @@ export default function SelfEvaluationSection({
   const [tempFormUrl, setTempFormUrl] = useState(general?.performanceFormUrl || '');
   const [tempFormLabel, setTempFormLabel] = useState(general?.performanceFormLabel || '');
   const [tempSections, setTempSections] = useState(general?.evaluationSections || []);
+  const [tempShowAttendedCourse, setTempShowAttendedCourse] = useState<boolean>(general?.showAttendedCourse !== false);
+  const [tempShowColleagueVoting, setTempShowColleagueVoting] = useState<boolean>(general?.showColleagueVoting !== false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const currentQuarter = Math.floor(new Date().getMonth() / 3) + 1;
@@ -67,20 +151,35 @@ export default function SelfEvaluationSection({
     }
   }, [propPeriodLabel, selectedYear, currentQuarter]);
 
-  // Fetch settings if not provided
+  // Poll settings periodically to enable real-time sync of sections/toggles
   useEffect(() => {
-    if (!general && isHodView) {
-      fetch('/api/system-settings', { headers: authHeaders })
-        .then(res => res.json())
-        .then(data => {
-          if (data.settings?.general) {
-            setGeneralSettings(data.settings.general);
-            setTempFormUrl(data.settings.general.performanceFormUrl);
-            setTempFormLabel(data.settings.general.performanceFormLabel);
-          }
-        });
-    }
-  }, [general, isHodView, authHeaders]);
+    let active = true;
+    const fetchGeneralSettings = async () => {
+      try {
+        const res = await fetch('/api/system-settings', { headers: authHeaders });
+        const data = await res.json();
+        if (active && res.ok && data.settings?.general) {
+          const newSettings = data.settings.general;
+          setGeneralSettings(prev => {
+            if (JSON.stringify(prev) !== JSON.stringify(newSettings)) {
+              return newSettings;
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to poll system settings:', err);
+      }
+    };
+
+    void fetchGeneralSettings();
+    const interval = setInterval(fetchGeneralSettings, 10000); // 10 seconds polling
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [authHeaders]);
 
   const periodLabel = selectedPeriod;
 
@@ -97,6 +196,17 @@ export default function SelfEvaluationSection({
       // Parallelize fetches
       const promises = [];
       
+      // Load voting candidates if empty
+      promises.push(
+        fetch('/api/evaluations?mode=voting-candidates', { headers: authHeaders })
+          .then(res => res.json())
+          .then(candData => {
+            if (Array.isArray(candData.candidates)) {
+              setCandidates(candData.candidates);
+            }
+          })
+      );
+
       // 1. Load employees if HOD
       if (isHodView) {
         promises.push(
@@ -146,6 +256,31 @@ export default function SelfEvaluationSection({
               }
             })
         );
+
+        // 4. Load Votes
+        promises.push(
+          fetch(`/api/evaluations?mode=votes&employeeId=${effectiveId}&periodLabel=${periodLabel}`, { headers: authHeaders })
+            .then(res => res.json())
+            .then(voteData => {
+              if (voteData.votes) {
+                setVotes({
+                  accountability: voteData.votes.accountability || { candidateId: '', reason: '' },
+                  sharpen_the_saw: voteData.votes.sharpen_the_saw || { candidateId: '', reason: '' },
+                  innovative: voteData.votes.innovative || { candidateId: '', reason: '' },
+                  collaboration: voteData.votes.collaboration || { candidateId: '', reason: '' },
+                  initiative: voteData.votes.initiative || { candidateId: '', reason: '' },
+                });
+              } else {
+                setVotes({
+                  accountability: { candidateId: '', reason: '' },
+                  sharpen_the_saw: { candidateId: '', reason: '' },
+                  innovative: { candidateId: '', reason: '' },
+                  collaboration: { candidateId: '', reason: '' },
+                  initiative: { candidateId: '', reason: '' },
+                });
+              }
+            })
+        );
       }
 
       await Promise.all(promises);
@@ -160,25 +295,7 @@ export default function SelfEvaluationSection({
     void loadData();
   }, [isHodView, userId, targetEmployee, authHeaders, periodLabel, selectedYear]);
 
-  // Draft persistence for reflection/comments
-  useEffect(() => {
-    const key = `eval_draft_${userId}_${periodLabel}_${isHodView ? 'hod' : 'emp'}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      if (isHodView) setHodComment(saved);
-      else setReflection(saved);
-    }
-  }, [userId, periodLabel, isHodView]);
 
-  useEffect(() => {
-    const key = `eval_draft_${userId}_${periodLabel}_${isHodView ? 'hod' : 'emp'}`;
-    const val = isHodView ? hodComment : reflection;
-    if (val) {
-      localStorage.setItem(key, val);
-    } else {
-      localStorage.removeItem(key);
-    }
-  }, [hodComment, reflection, userId, periodLabel, isHodView]);
 
   const visibleAttachments = useMemo(() => {
     // The backend already filters attachments by employeeId for non-HOD users.
@@ -186,9 +303,50 @@ export default function SelfEvaluationSection({
     return attachments;
   }, [attachments]);
 
-  const handleSave = async () => {
+  const handleSaveVotes = async () => {
     try {
-      setSaving(true);
+      setSavingVotes(true);
+      const res = await fetch('/api/evaluations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({
+          action: 'save-votes',
+          votes,
+          periodLabel,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save votes');
+      toast.success('Your colleague votes have been updated and submitted!');
+    } catch (err) {
+      toast.error('Failed to save votes');
+    } finally {
+      setSavingVotes(false);
+    }
+  };
+
+  const handleSaveForm = async (
+    overrideData?: Partial<{
+      attendedCourse: string;
+      courseCertName: string;
+      courseCertUrl: string;
+      plgtPlay: string;
+      plgtPlayPhotoName: string;
+      plgtPlayPhotoUrl: string;
+    }>
+  ) => {
+    setSavingForm(true);
+    try {
+      const dataToSave = {
+        attendedCourse: overrideData?.hasOwnProperty('attendedCourse') ? overrideData.attendedCourse : attendedCourse,
+        courseCertName: overrideData?.hasOwnProperty('courseCertName') ? overrideData.courseCertName : courseCertName,
+        courseCertUrl: overrideData?.hasOwnProperty('courseCertUrl') ? overrideData.courseCertUrl : courseCertUrl,
+        plgtPlay: overrideData?.hasOwnProperty('plgtPlay') ? overrideData.plgtPlay : plgtPlay,
+        plgtPlayPhotoName: overrideData?.hasOwnProperty('plgtPlayPhotoName') ? overrideData.plgtPlayPhotoName : plgtPlayPhotoName,
+        plgtPlayPhotoUrl: overrideData?.hasOwnProperty('plgtPlayPhotoUrl') ? overrideData.plgtPlayPhotoUrl : plgtPlayPhotoUrl,
+      };
+
+      const reflectionStr = JSON.stringify(dataToSave);
+
       const res = await fetch('/api/evaluations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
@@ -196,23 +354,101 @@ export default function SelfEvaluationSection({
           action: 'upsert-reflection',
           employeeId: isHodView ? targetEmployee : userId,
           periodLabel,
-          reflection,
+          reflection: reflectionStr,
           hodComment,
         }),
       });
       if (!res.ok) throw new Error('Failed to save');
+      setReflection(reflectionStr);
       setSavedAt(new Date().toLocaleString('en-GB'));
-      toast.success('Self-evaluation saved to database');
-      if (isHodView) {
-        setHodComment('');
-      } else {
-        setReflection('');
-      }
+      toast.success('Your responses have been successfully saved!');
     } catch (err) {
-      toast.error('Failed to save evaluation');
+      toast.error('Failed to save responses');
     } finally {
-      setSaving(false);
+      setSavingForm(false);
     }
+  };
+
+  const handleUploadCert = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const toastId = toast.loading('Uploading certificate...');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/leave-attachments', {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || 'Failed to upload file');
+
+      const name = payload?.attachment?.originalName || file.name;
+      const url = payload?.attachment?.path || '';
+
+      setCourseCertName(name);
+      setCourseCertUrl(url);
+
+      await handleSaveForm({
+        courseCertName: name,
+        courseCertUrl: url
+      });
+      toast.success('Certificate uploaded successfully!', { id: toastId });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload certificate', { id: toastId });
+    }
+  };
+
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const toastId = toast.loading('Uploading photo...');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/leave-attachments', {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || 'Failed to upload file');
+
+      const name = payload?.attachment?.originalName || file.name;
+      const url = payload?.attachment?.path || '';
+
+      setPlgtPlayPhotoName(name);
+      setPlgtPlayPhotoUrl(url);
+
+      await handleSaveForm({
+        plgtPlayPhotoName: name,
+        plgtPlayPhotoUrl: url
+      });
+      toast.success('Photo uploaded successfully!', { id: toastId });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload photo', { id: toastId });
+    }
+  };
+
+  const handleRemoveCert = async () => {
+    setCourseCertName('');
+    setCourseCertUrl('');
+    await handleSaveForm({
+      courseCertName: '',
+      courseCertUrl: ''
+    });
+  };
+
+  const handleRemovePhoto = async () => {
+    setPlgtPlayPhotoName('');
+    setPlgtPlayPhotoUrl('');
+    await handleSaveForm({
+      plgtPlayPhotoName: '',
+      plgtPlayPhotoUrl: ''
+    });
   };
 
   const handleAttach = async () => {
@@ -271,6 +507,8 @@ export default function SelfEvaluationSection({
           performanceFormUrl: tempFormUrl,
           performanceFormLabel: tempFormLabel,
           evaluationSections: tempSections,
+          showAttendedCourse: tempShowAttendedCourse,
+          showColleagueVoting: tempShowColleagueVoting,
         }),
       });
       if (!res.ok) throw new Error('Save failed');
@@ -278,7 +516,9 @@ export default function SelfEvaluationSection({
       setGeneralSettings({ 
         performanceFormUrl: tempFormUrl, 
         performanceFormLabel: tempFormLabel,
-        evaluationSections: tempSections
+        evaluationSections: tempSections,
+        showAttendedCourse: tempShowAttendedCourse,
+        showColleagueVoting: tempShowColleagueVoting,
       });
       setEditingSettings(false);
     } catch (err) {
@@ -332,7 +572,6 @@ export default function SelfEvaluationSection({
       };
     }));
   };
-
   return (
     <div className="space-y-5">
       {/* Progress indicator */}
@@ -340,16 +579,35 @@ export default function SelfEvaluationSection({
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-base font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>{periodLabel} Evaluation</h3>
           <div className="flex items-center gap-3">
+            {isHodView && (
+              <div className="flex items-center gap-1.5 mr-2">
+                <span className="text-xs font-semibold text-slate-400">Employee:</span>
+                <select 
+                  value={targetEmployee} 
+                  onChange={e => setTargetEmployee(e.target.value)}
+                  className="bg-black/[0.03] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-500 border-indigo-500/20 hover:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all"
+                >
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id} className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">{emp.name}</option>
+                  ))}
+                  {employees.length === 0 && (
+                    <option value="" className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">
+                      No employees found
+                    </option>
+                  )}
+                </select>
+              </div>
+            )}
             <select 
               value={periodLabel} 
               onChange={e => setSelectedPeriod(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-medium text-white focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="bg-black/[0.03] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
               {availablePeriods.map(p => (
-                <option key={p} value={p} className="bg-[#1a1c23]">{p}</option>
+                <option key={p} value={p} className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">{p}</option>
               ))}
               {!availablePeriods.includes(periodLabel) && (
-                <option value={periodLabel} className="bg-[#1a1c23]">{periodLabel}</option>
+                <option value={periodLabel} className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">{periodLabel}</option>
               )}
             </select>
             {savedAt && (
@@ -391,6 +649,8 @@ export default function SelfEvaluationSection({
                       setTempFormUrl(generalSettings?.performanceFormUrl || '');
                       setTempFormLabel(generalSettings?.performanceFormLabel || '');
                       setTempSections(generalSettings?.evaluationSections || []);
+                      setTempShowAttendedCourse(generalSettings?.showAttendedCourse !== false);
+                      setTempShowColleagueVoting(generalSettings?.showColleagueVoting !== false);
                     }
                     setEditingSettings(!editingSettings);
                   }}
@@ -427,6 +687,30 @@ export default function SelfEvaluationSection({
                       className="input-base text-xs"
                       placeholder="https://forms.gle/..."
                     />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-6 pt-2 md:col-span-2">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-slate-300 hover:text-white transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={tempShowAttendedCourse}
+                        onChange={e => setTempShowAttendedCourse(e.target.checked)}
+                        className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                      />
+                      <span className="text-xs font-semibold">
+                        Include Attended Course &amp; PLGT Play Submission
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-slate-300 hover:text-white transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={tempShowColleagueVoting}
+                        onChange={e => setTempShowColleagueVoting(e.target.checked)}
+                        className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                      />
+                      <span className="text-xs font-semibold">
+                        Include Colleague Voting Section
+                      </span>
+                    </label>
                   </div>
                 </div>
 
@@ -503,7 +787,10 @@ export default function SelfEvaluationSection({
                   </p>
                 </div>
 
-                {generalSettings?.evaluationSections?.map(sec => (
+                {generalSettings?.evaluationSections?.filter(sec => {
+                  if (!sec.assignedEmployeeIds || sec.assignedEmployeeIds.length === 0) return true;
+                  return sec.assignedEmployeeIds.includes(effectiveEmployeeId);
+                }).map(sec => (
                   <div key={sec.id} className="space-y-4">
                     <h5 className="text-xs font-black uppercase tracking-widest text-indigo-400/80 px-2 flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
@@ -525,8 +812,290 @@ export default function SelfEvaluationSection({
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
+
+                {/* Colleague Complement Voting Section */}
+                {generalSettings?.showColleagueVoting !== false && (
+                  <div className="space-y-6 pt-6 border-t border-white/5 mt-6">
+                    <div className="rounded-xl p-5 bg-[#312e81]/10 border border-[#4338ca]/20">
+                      <h4 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'rgb(var(--text-primary))' }}>
+                        <Icon name="HandThumbUpIcon" size={16} className="text-indigo-400" />
+                        {generalSettings?.votingTitle || "Colleague Complement Voting"}
+                      </h4>
+                      <p className="text-xs leading-relaxed text-slate-400">
+                        {generalSettings?.votingDescription || "Vote as a complement to your colleagues whomever meet the expectations. Every submitted vote adds 5 points directly to their activity scores."}
+                      </p>
+                    </div>
+
+                    {(!isHodView || targetEmployee === userId) ? (
+                      // Interactive Voting Form (Self)
+                      <div className="space-y-6">
+                        {votingCategories.map(cat => (
+                          <div key={cat.key} className="space-y-3">
+                            {/* Colleague Selector Card */}
+                            <div className="rounded-xl p-5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-3">
+                              <label className="text-xs font-bold block text-slate-800 dark:text-slate-200">{cat.label}</label>
+                              <select
+                                value={votes[cat.key]?.candidateId || ''}
+                                onChange={e => setVotes(prev => ({
+                                  ...prev,
+                                  [cat.key]: {
+                                    ...prev[cat.key],
+                                    candidateId: e.target.value
+                                  }
+                                }))}
+                                className="bg-black/[0.03] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 dark:text-white w-full max-w-md focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                              >
+                                <option value="" className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">Choose</option>
+                                {candidates.map(candidate => (
+                                  <option key={candidate.id} value={candidate.id} className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">
+                                    {candidate.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Reason Input Card */}
+                            <div className="rounded-xl p-5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
+                              <label className="text-xs font-bold block text-slate-800 dark:text-slate-200">{cat.reasonLabel}</label>
+                              <input
+                                type="text"
+                                value={votes[cat.key]?.reason || ''}
+                                onChange={e => setVotes(prev => ({
+                                  ...prev,
+                                  [cat.key]: {
+                                    ...prev[cat.key],
+                                    reason: e.target.value
+                                  }
+                                }))}
+                                className="w-full bg-transparent border-b border-black/10 dark:border-white/10 py-2 text-xs text-slate-800 dark:text-white placeholder-black/30 dark:placeholder-white/30 focus:border-indigo-500 focus:outline-none transition-colors"
+                                placeholder="Your answer"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="flex justify-end pt-4">
+                          <button
+                            onClick={handleSaveVotes}
+                            disabled={savingVotes}
+                            className="btn-primary text-xs flex items-center gap-1.5"
+                          >
+                            {savingVotes ? 'Submitting...' : 'Submit Votes'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Read-only view (HOD checking employee's cast votes)
+                      <div className="space-y-4">
+                        {votingCategories.map(cat => {
+                          const votedCandidate = candidates.find(c => c.id === votes[cat.key]?.candidateId);
+                          const reason = votes[cat.key]?.reason || 'No supporting reason provided';
+                          return (
+                            <div key={cat.key} className="rounded-xl p-4 bg-black/[0.01] dark:bg-white/[0.01] border border-black/5 dark:border-white/5 space-y-2">
+                              <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 block">{cat.label}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Voted colleague:</span>
+                                <span className="text-xs font-bold text-slate-800 dark:text-white">
+                                  {votedCandidate ? votedCandidate.name : 'None chosen'}
+                                </span>
+                              </div>
+                              {votedCandidate && (
+                                <div className="text-xs leading-relaxed text-slate-700 dark:text-slate-400 bg-black/[0.01] dark:bg-white/[0.02] p-2.5 rounded border border-black/5 dark:border-white/5">
+                                  <span className="font-medium text-slate-500 block mb-1">Supporting reason:</span>
+                                  "{reason}"
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Attended Course & PLGT Play Custom Form Section */}
+                {generalSettings?.showAttendedCourse !== false && (
+                  <div className="space-y-6 pt-6 border-t border-black/5 dark:border-white/5 mt-6">
+                    <div className="rounded-xl p-5 bg-[#312e81]/5 border border-indigo-500/10">
+                      <h4 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'rgb(var(--text-primary))' }}>
+                        <Icon name="AcademicCapIcon" size={16} className="text-indigo-400" />
+                        {generalSettings?.courseTitle || "Attended Course & PLGT Play Submission"}
+                      </h4>
+                      <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                        {generalSettings?.courseDescription || "Submit details of courses you have attended and your participation in PLGT Play events, along with supporting documents/photos."}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Column 1: Attended Course */}
+                      <div className="space-y-4">
+                        <div className="rounded-xl p-5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-4">
+                          <div>
+                            <label className="text-xs font-bold block text-slate-800 dark:text-slate-200 mb-1">
+                              6. Attended Course (Course Name, Date)
+                            </label>
+                            <span className="text-[10px] text-slate-500 block mb-2 font-medium">
+                              Please make sure this course is updated in your Google Calendar
+                            </span>
+                            {isHodView ? (
+                              <div className="text-sm text-slate-800 dark:text-white bg-black/[0.02] dark:bg-white/[0.02] p-3 rounded-lg border border-black/5 dark:border-white/5 min-h-[40px] italic">
+                                {attendedCourse || "No answer provided"}
+                              </div>
+                            ) : (
+                              <input
+                                type="text"
+                                value={attendedCourse}
+                                onChange={e => setAttendedCourse(e.target.value)}
+                                className="w-full bg-transparent border-b border-black/10 dark:border-white/10 py-2 text-xs text-slate-800 dark:text-white placeholder-black/30 dark:placeholder-white/30 focus:border-indigo-500 focus:outline-none transition-colors"
+                                placeholder="Your answer"
+                              />
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold block text-slate-800 dark:text-slate-200 mb-2">
+                              Course cert
+                            </label>
+                            {courseCertUrl ? (
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                                <div className="flex items-center gap-2 truncate pr-2">
+                                  <Icon name="DocumentIcon" size={14} className="text-indigo-400 shrink-0" />
+                                  <span className="text-xs text-slate-800 dark:text-white truncate font-medium">{courseCertName || 'Certificate File'}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => window.open(courseCertUrl, '_blank')}
+                                    className="text-xs font-semibold text-blue-500 hover:text-blue-600 transition-colors"
+                                  >
+                                    View
+                                  </button>
+                                  {!isHodView && (
+                                    <button
+                                      type="button"
+                                      onClick={handleRemoveCert}
+                                      className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
+                                    >
+                                      Remove
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : isHodView ? (
+                              <div className="text-xs text-slate-500 italic">No certificate uploaded</div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="file"
+                                  accept="image/*,application/pdf"
+                                  onChange={handleUploadCert}
+                                  className="hidden"
+                                  id="cert-upload-input"
+                                />
+                                <label
+                                  htmlFor="cert-upload-input"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] text-xs font-semibold text-slate-800 dark:text-white cursor-pointer transition-all"
+                                >
+                                  <Icon name="ArrowUpTrayIcon" size={12} />
+                                  Add File
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Column 2: PLGT Play */}
+                      <div className="space-y-4">
+                        <div className="rounded-xl p-5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-4">
+                          <div>
+                            <label className="text-xs font-bold block text-slate-800 dark:text-slate-200 mb-2">
+                              7. PLGT Play (Date & Event)
+                            </label>
+                            {isHodView ? (
+                              <div className="text-sm text-slate-800 dark:text-white bg-black/[0.02] dark:bg-white/[0.02] p-3 rounded-lg border border-black/5 dark:border-white/5 min-h-[40px] italic">
+                                {plgtPlay || "No answer provided"}
+                              </div>
+                            ) : (
+                              <input
+                                type="text"
+                                value={plgtPlay}
+                                onChange={e => setPlgtPlay(e.target.value)}
+                                className="w-full bg-transparent border-b border-black/10 dark:border-white/10 py-2 text-xs text-slate-800 dark:text-white placeholder-black/30 dark:placeholder-white/30 focus:border-indigo-500 focus:outline-none transition-colors"
+                                placeholder="Your answer"
+                              />
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold block text-slate-800 dark:text-slate-200 mb-2">
+                              7. PLGT Play Photo
+                            </label>
+                            {plgtPlayPhotoUrl ? (
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                                <div className="flex items-center gap-2 truncate pr-2">
+                                  <Icon name="PhotoIcon" size={14} className="text-indigo-400 shrink-0" />
+                                  <span className="text-xs text-slate-800 dark:text-white truncate font-medium">{plgtPlayPhotoName || 'Photo File'}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => window.open(plgtPlayPhotoUrl, '_blank')}
+                                    className="text-xs font-semibold text-blue-500 hover:text-blue-600 transition-colors"
+                                  >
+                                    View
+                                  </button>
+                                  {!isHodView && (
+                                    <button
+                                      type="button"
+                                      onClick={handleRemovePhoto}
+                                      className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
+                                    >
+                                      Remove
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : isHodView ? (
+                              <div className="text-xs text-slate-500 italic">No photo uploaded</div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleUploadPhoto}
+                                  className="hidden"
+                                  id="photo-upload-input"
+                                />
+                                <label
+                                  htmlFor="photo-upload-input"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] text-xs font-semibold text-slate-800 dark:text-white cursor-pointer transition-all"
+                                >
+                                  <Icon name="ArrowUpTrayIcon" size={12} />
+                                  Add File
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!isHodView && (
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={() => handleSaveForm()}
+                          disabled={savingForm}
+                          className="btn-primary text-xs flex items-center gap-1.5"
+                        >
+                          {savingForm ? 'Saving...' : 'Save Submission'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
+          )}
             
             {/* Google Form Link */}
             {!editingSettings && (
@@ -569,17 +1138,9 @@ export default function SelfEvaluationSection({
                   </div>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgb(var(--text-secondary))' }}>Discussion Thread For</p>
-                    <select 
-                      className="bg-transparent border-none text-sm font-bold focus:ring-0 p-0 cursor-pointer hover:text-indigo-300 transition-colors"
-                      style={{ color: 'rgb(var(--text-primary))' }}
-                      value={targetEmployee} 
-                      onChange={e => setTargetEmployee(e.target.value)}
-                    >
-                      {employees.map(emp => (
-                        <option key={emp.id} value={emp.id} className="bg-slate-900 text-white">{emp.name}</option>
-                      ))}
-                      {employees.length === 0 && <option value="" className="text-gray-900">No employees found</option>}
-                    </select>
+                    <span className="text-sm font-bold text-indigo-500">
+                      {employees.find(emp => emp.id === targetEmployee)?.name || 'Loading employee...'}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

@@ -26,7 +26,7 @@ const adminNavGroups = [
     items: [
       { label: 'Overall View', icon: 'ChartPieIcon', href: '/admin-panel/performance/heatmap', badge: 0 },
       { label: 'Scoring System', icon: 'TableCellsIcon', href: '/admin-panel/performance', badge: 0 },
-
+      { label: 'Evaluation Forms', icon: 'DocumentTextIcon', href: '/admin-panel/evaluation-forms', badge: 0 },
     ],
   },
   {
@@ -101,6 +101,7 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
   const [mounted, setMounted] = useState(false);
   const [dynamicBadges, setDynamicBadges] = useState<Record<string, number>>({});
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastClickRef = useRef<number>(0);
 
   const fullActiveRoute = useMemo(() => {
     if (activeRoute) return activeRoute;
@@ -119,6 +120,7 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     const loadDynamicBadges = async () => {
       if (!userId) return;
@@ -131,7 +133,10 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
       });
 
       try {
-        const res = await fetch(`/api/sidebar-stats?t=${Date.now()}`, { headers: authHeaders });
+        const res = await fetch(`/api/sidebar-stats?t=${Date.now()}`, { 
+          headers: authHeaders,
+          signal: controller.signal 
+        });
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
@@ -145,7 +150,8 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
         }
 
         setDynamicBadges(newBadges);
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === 'AbortError' || cancelled) return;
         console.error('Failed to load sidebar stats:', err);
       }
     };
@@ -155,6 +161,7 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
 
     return () => {
       cancelled = true;
+      controller.abort();
       clearInterval(interval);
     };
   }, [role, userId, userName, userDepartment, selectedYear]);
@@ -178,24 +185,40 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
     if (!collapsed) {
       setCollapsed(true);
       setExpandArmed(false);
+      lastClickRef.current = 0;
       if (expandTimerRef.current) clearTimeout(expandTimerRef.current);
       return;
     }
 
-    if (!expandArmed) {
+    const now = Date.now();
+    const timeSinceLastClick = now - lastClickRef.current;
+
+    if (timeSinceLastClick < 900) {
+      setCollapsed(false);
+      setExpandArmed(false);
+      lastClickRef.current = 0;
+      if (expandTimerRef.current) clearTimeout(expandTimerRef.current);
+    } else {
       setExpandArmed(true);
+      lastClickRef.current = now;
       if (expandTimerRef.current) clearTimeout(expandTimerRef.current);
-      expandTimerRef.current = setTimeout(() => setExpandArmed(false), 900);
-      return;
+      expandTimerRef.current = setTimeout(() => {
+        setExpandArmed(false);
+        lastClickRef.current = 0;
+      }, 900);
     }
-
-    setCollapsed(false);
-    setExpandArmed(false);
-    if (expandTimerRef.current) clearTimeout(expandTimerRef.current);
   };
 
   return (
     <aside
+      onDoubleClick={() => {
+        if (collapsed) {
+          setCollapsed(false);
+          setExpandArmed(false);
+          lastClickRef.current = 0;
+          if (expandTimerRef.current) clearTimeout(expandTimerRef.current);
+        }
+      }}
       className="flex flex-col h-full transition-all duration-300 ease-in-out flex-shrink-0"
       style={{
         width: collapsed ? 64 : 240,

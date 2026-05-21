@@ -52,6 +52,20 @@ const getCategoryColor = (category: string, labels?: any) => {
   return categoryMap[category] || { badge: 'rgba(107, 114, 128, 0.2)', text: 'rgb(107 114 128)' };
 };
 
+const formatVoteDescription = (desc: string | null) => {
+  if (!desc) return '';
+  const match = desc.match(/Voted by\s+[^.]+\.\s*Reason:\s*(.*)/i);
+  if (match) {
+    const reason = match[1]?.trim();
+    return reason ? `Reason: ${reason}` : '';
+  }
+  return desc;
+};
+
+const isVoteRecord = (entry: any) => {
+  return entry.id?.startsWith('VOTE-') || entry.activityName?.toLowerCase().includes('voting form');
+};
+
 export default function ActivitiesCrudPanel({ 
   embedded = false, 
   externalEmployeeId = null,
@@ -744,7 +758,7 @@ export default function ActivitiesCrudPanel({
                 className="input-base text-sm w-full flex items-center justify-between py-2 px-3"
                 style={{ background: 'rgb(var(--bg-elevated))' }}
               >
-                <span className={selectedEmployeeIds.length === 0 ? 'text-slate-500' : 'text-slate-200'}>
+                <span className={selectedEmployeeIds.length === 0 ? 'text-slate-500' : 'text-slate-800 dark:text-slate-200'}>
                   {selectedEmployeeIds.length === 0 
                     ? 'Select employees...' 
                     : `${selectedEmployeeIds.length} employee(s) selected`}
@@ -755,17 +769,17 @@ export default function ActivitiesCrudPanel({
               {showEmployeeDropdown && (
                 <div className="absolute top-full left-0 right-0 mt-1 z-20 rounded-lg border shadow-2xl p-2 max-h-60 overflow-y-auto"
                     style={{ background: 'rgb(var(--bg-card))', borderColor: 'rgb(var(--border-subtle))' }}>
-                    <div className="flex items-center justify-between px-2 mb-2 pb-1 border-b border-white/5">
+                    <div className="flex items-center justify-between px-2 mb-2 pb-1 border-b border-black/5 dark:border-white/5">
                         <button 
                           type="button"
-                          className="text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase tracking-wider"
+                          className="text-[10px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 uppercase tracking-wider"
                           onClick={() => setSelectedEmployeeIds(users.map(u => u.id))}
                         >
                           Select All
                         </button>
                         <button 
                           type="button"
-                          className="text-[10px] font-bold text-red-400 hover:text-red-300 uppercase tracking-wider"
+                          className="text-[10px] font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 uppercase tracking-wider"
                           onClick={() => setSelectedEmployeeIds([])}
                         >
                           Clear
@@ -775,16 +789,16 @@ export default function ActivitiesCrudPanel({
                       {users.filter(u => showInactive ? u.status === 'inactive' : u.status === 'active').map(user => (
                         <label
                           key={user.id}
-                          className="flex items-center gap-2 rounded-md px-3 py-1.5 cursor-pointer hover:bg-white/5 transition-colors"
+                          className="flex items-center gap-2 rounded-md px-3 py-1.5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                           style={{ background: selectedEmployeeIds.includes(user.id) ? 'rgba(79,127,255,0.12)' : 'transparent' }}
                         >
                           <input
                             type="checkbox"
                             checked={selectedEmployeeIds.includes(user.id)}
                             onChange={() => toggleEmployee(user.id)}
-                            className="rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500"
+                            className="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-500 focus:ring-blue-500"
                           />
-                          <span className="text-sm flex-1" style={{ color: selectedEmployeeIds.includes(user.id) ? 'rgb(255 255 255)' : 'rgb(var(--text-secondary))' }}>
+                          <span className="text-sm flex-1" style={{ color: selectedEmployeeIds.includes(user.id) ? 'rgb(var(--text-primary))' : 'rgb(var(--text-secondary))' }}>
                             {user.name}
                           </span>
                           {user.status === 'inactive' && (
@@ -981,7 +995,9 @@ export default function ActivitiesCrudPanel({
                 </th>
               )}
               <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Activity</th>
-              <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Employee</th>
+              {userRole !== 'employee' && (
+                <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Employee</th>
+              )}
               <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Month</th>
               <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Category</th>
               <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Bucket</th>
@@ -993,7 +1009,7 @@ export default function ActivitiesCrudPanel({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={(canDelete && userRole !== 'employee') ? 9 : 8} className="px-4 py-12">
+                <td colSpan={(canDelete && userRole !== 'employee') ? 9 : (userRole === 'employee' ? 7 : 8)} className="px-4 py-12">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
                     <span className="text-xs font-medium" style={{ color: 'rgb(var(--text-muted))' }}>Loading activity records...</span>
@@ -1002,7 +1018,7 @@ export default function ActivitiesCrudPanel({
               </tr>
             ) : filteredEntries.length === 0 ? (
               <tr>
-                <td colSpan={(canDelete && userRole !== 'employee') ? 9 : 8} className="px-4 py-6 text-center text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
+                <td colSpan={(canDelete && userRole !== 'employee') ? 9 : (userRole === 'employee' ? 7 : 8)} className="px-4 py-6 text-center text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
                   No activity records found
                 </td>
               </tr>
@@ -1033,7 +1049,7 @@ export default function ActivitiesCrudPanel({
                           />
                           <div className="mt-1 pl-2 border-l border-white/5 space-y-1">
                              <InlineEditableField
-                              initialValue={entry.description || ''}
+                              initialValue={isVoteRecord(entry) ? formatVoteDescription(entry.description) : (entry.description || '')}
                               onSave={(val) => handleAsyncSave(entry, { description: val })}
                               textClassName="text-[11px] text-slate-500 italic"
                               placeholder="Add details..."
@@ -1053,7 +1069,7 @@ export default function ActivitiesCrudPanel({
                             </button>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1.5 bg-slate-900 text-[10px] text-slate-200 rounded-lg shadow-2xl border border-white/10 opacity-0 group-hover/audit:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
                               <p className="font-bold text-blue-400 uppercase tracking-tighter mb-0.5">Audit Info</p>
-                              <p>Last Updated by: <span className="text-white">{decodeURIComponent(entry.updatedBy || '')}</span></p>
+                               <p>Last Updated by: <span className="text-white">{isVoteRecord(entry) ? 'Anonymous' : decodeURIComponent(entry.updatedBy || '')}</span></p>
                               {entry.updatedAt && (
                                <p className="text-[9px] text-slate-400 mt-0.5">
                                   {new Date(entry.updatedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
@@ -1065,31 +1081,33 @@ export default function ActivitiesCrudPanel({
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-xs">
-                      {editingId === entry.id ? (
-                        <select
-                          className="input-base text-[11px] py-0.5 w-full bg-slate-800 border-white/10"
-                          value={entry.assignedToName}
-                          onChange={async (e) => {
-                            const selected = users.find(item => item.name === e.target.value);
-                            if (selected) {
-                              updateLocalEntry(entry.id, { assignedToName: selected.name, assignedToId: selected.id });
-                            }
-                          }}
-                        >
-                          {users.map(user => (
-                            <option key={user.id} value={user.name}>{user.name}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <Link 
-                          href={`/admin-panel/users?id=${entry.assignedToId}`}
-                          className="text-blue-400 hover:text-blue-300 hover:underline transition-all block font-medium"
-                        >
-                          {entry.assignedToName}
-                        </Link>
-                      )}
-                    </td>
+                    {userRole !== 'employee' && (
+                      <td className="px-3 py-3 text-xs">
+                        {editingId === entry.id ? (
+                          <select
+                            className="input-base text-[11px] py-0.5 w-full bg-slate-800 border-white/10"
+                            value={entry.assignedToName}
+                            onChange={async (e) => {
+                              const selected = users.find(item => item.name === e.target.value);
+                              if (selected) {
+                                updateLocalEntry(entry.id, { assignedToName: selected.name, assignedToId: selected.id });
+                              }
+                            }}
+                          >
+                            {users.map(user => (
+                              <option key={user.id} value={user.name}>{user.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <Link 
+                            href={`/admin-panel/users?id=${entry.assignedToId}`}
+                            className="text-blue-400 hover:text-blue-300 hover:underline transition-all block font-medium"
+                          >
+                            {entry.assignedToName}
+                          </Link>
+                        )}
+                      </td>
+                    )}
                     <td className="px-3 py-3 text-xs">
                       {editingId === entry.id ? (
                         <select 

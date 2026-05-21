@@ -20,6 +20,7 @@ export default function ProgressBar() {
   useEffect(() => {
     const handleAnchorClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      if (!target || typeof target.closest !== 'function') return;
       const anchor = target.closest('a');
       
       if (anchor && anchor.href && anchor.href.startsWith(window.location.origin) && anchor.target !== '_blank') {

@@ -303,6 +303,7 @@ export default function PersonalPortalClient({ basePath }: PersonalPortalClientP
                 <SelfEvaluationSection 
                   isArchive={isArchive} 
                   general={profileData?.general}
+                  forceSelfView={true}
                 />
               )}
               

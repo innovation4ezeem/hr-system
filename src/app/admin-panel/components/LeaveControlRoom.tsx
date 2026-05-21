@@ -31,6 +31,7 @@ type LeaveRequest = {
   appliedAt: string;
   status: 'Applied' | 'Approved' | 'Rejected';
   attachment?: string;
+  reason?: string;
 };
 
 type HistoryRow = {
@@ -592,6 +593,7 @@ export default function LeaveControlRoom() {
             appliedAt: String(request.requestedAt || request.requested_at || request.appliedAt || request.applied_at || ''),
             status: mapDbRequestStatus(String(request.status || 'pending')),
             attachment: request.attachment ? String(request.attachment) : undefined,
+            reason: request.reason ? String(request.reason) : undefined,
           }));
 
         const liveProfiles = (Array.isArray(usersPayload?.users) ? usersPayload.users : [])
@@ -930,7 +932,7 @@ export default function LeaveControlRoom() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'rgb(var(--bg-elevated))' }}>
-                {['ID', 'Employee', 'Type', 'Date', 'Half-Day', 'Attachment', 'Pending', 'Actions'].map(h => (
+                {['ID', 'Employee', 'Type', 'Date', 'Half-Day', 'Reason', 'Attachment', 'Pending', 'Actions'].map(h => (
                   <th key={h} className="px-3 py-2 text-left text-xs" style={{ color: 'rgb(var(--text-muted))' }}>{h}</th>
                 ))}
               </tr>
@@ -949,6 +951,9 @@ export default function LeaveControlRoom() {
                       <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: r.session === 'FULL' ? 'rgba(79,127,255,0.15)' : 'linear-gradient(90deg, rgba(52,211,153,0.2) 50%, rgba(251,191,36,0.2) 50%)', color: 'rgb(var(--text-secondary))' }}>
                         {r.session} ({r.units})
                       </span>
+                    </td>
+                    <td className="px-3 py-2" style={{ color: 'rgb(var(--text-secondary))', maxWidth: '220px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                      {r.reason || <span className="text-xs italic" style={{ color: 'rgb(var(--text-muted))' }}>No reason provided</span>}
                     </td>
                     <td className="px-3 py-2">
                       {r.attachment ? (
@@ -1029,6 +1034,7 @@ export default function LeaveControlRoom() {
                   <th className="px-4 py-2 font-semibold">Type</th>
                   <th className="px-4 py-2 font-semibold">Date Range</th>
                   <th className="px-4 py-2 font-semibold">Units</th>
+                  <th className="px-4 py-2 font-semibold">Reason</th>
                   <th className="px-4 py-2 font-semibold">Status</th>
                 </tr>
               </thead>
@@ -1052,6 +1058,9 @@ export default function LeaveControlRoom() {
                         {new Date(r.startDate).toLocaleDateString('en-GB')} - {new Date(r.endDate).toLocaleDateString('en-GB')}
                       </td>
                       <td className="px-4 py-2 font-medium">{r.units}</td>
+                      <td className="px-4 py-2 text-muted-foreground" style={{ maxWidth: '220px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                        {r.reason || <span className="text-xs italic opacity-50">-</span>}
+                      </td>
                       <td className="px-4 py-2">
                         <span className={`flex items-center gap-1 ${r.status === 'Approved' ? 'text-emerald-400' :
                           r.status === 'Rejected' ? 'text-red-400' :
@@ -1073,7 +1082,7 @@ export default function LeaveControlRoom() {
                   );
                 }).length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center">
+                      <td colSpan={6} className="px-4 py-12 text-center">
                         <div className="flex flex-col items-center gap-2 text-muted-foreground italic">
                           <Icon name="DocumentMagnifyingGlassIcon" size={24} className="opacity-20" />
                           <p>No leave records found{historySearchTerm ? ` for "${historySearchTerm}"` : ''} in {reportYear}.</p>

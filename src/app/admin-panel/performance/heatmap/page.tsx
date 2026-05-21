@@ -199,17 +199,17 @@ export default function AdminPerformanceHeatmapPage() {
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">
             {viewMode === 'heatmap' ? 'Visual Heatmap View' : 'Masterboard Ranking View'}
           </h3>
-          <div className="flex bg-slate-800/50 p-1 rounded-xl border border-slate-700/50">
+          <div className="flex bg-slate-200/70 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-300/50 dark:border-slate-700/50">
             <button 
               onClick={() => setViewMode('heatmap')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'heatmap' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'heatmap' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               <Icon name="ChartPieIcon" size={14} />
               Heatmap
             </button>
             <button 
               onClick={() => setViewMode('ranking')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'ranking' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'ranking' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               <Icon name="TrophyIcon" size={14} />
               Ranking Board

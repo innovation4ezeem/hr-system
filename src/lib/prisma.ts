@@ -20,7 +20,7 @@ function createPrismaClient(): PrismaClient {
       user: decodeURIComponent(urlObj.username),
       password: decodeURIComponent(urlObj.password),
       database: urlObj.pathname.substring(1),
-      connectionLimit: 5,
+      connectionLimit: 15,
     };
     
     // Casting to 'any' to bypass TypeScript nested dependency mismatch 

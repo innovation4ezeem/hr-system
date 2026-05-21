@@ -199,8 +199,8 @@ export async function createActivityScoreController(payload: ActivityPayload) {
 
   await upsertActivityScore(record);
   
-  // Background Sync
-  syncActivitiesIntoPerformanceSheet(record.year).catch(e => console.error('Background sync failed', e));
+  // Sync worksheet
+  await syncActivitiesIntoPerformanceSheet(record.year);
 
   // Audit Log
   await insertSystemAuditLog('performance-score', 'create-activity', record.updatedBy || 'Admin', {
@@ -315,8 +315,8 @@ export async function createActivityScoresBatchController(payload: ActivityPaylo
     });
   }
 
-  // Sync ONCE in background
-  syncActivitiesIntoPerformanceSheet(year).catch(e => console.error('Batch background sync failed', e));
+  // Sync worksheet
+  await syncActivitiesIntoPerformanceSheet(year);
 
   // Audit Log & Notify in background
   Promise.all(records.map(async record => {
@@ -392,8 +392,8 @@ export async function updateActivityScoreController(id: string, payload: Activit
 
   await upsertActivityScore(record);
   
-  // Background Sync
-  syncActivitiesIntoPerformanceSheet(record.year).catch(e => console.error('Update background sync failed', e));
+  // Sync worksheet
+  await syncActivitiesIntoPerformanceSheet(record.year);
 
   // Audit Log with Diffs
   const diffs: Record<string, { from: any, to: any }> = {};
@@ -438,12 +438,8 @@ export async function deleteActivityScoreController(id: string, year: number, ac
   // 1. Delete the actual record first
   await deleteActivityScore(id);
 
-  // 2. Syncing the worksheet is secondary and heavy - run it in background
-  // We don't await this so the API returns immediately
-  console.log(`[Delete] Record ${id} deleted. Starting background sync for year ${year}...`);
-  syncActivitiesIntoPerformanceSheet(parseYear(year)).catch(syncError => {
-    console.error('[Delete] Background sync failed:', syncError);
-  });
+  // 2. Syncing the worksheet
+  await syncActivitiesIntoPerformanceSheet(parseYear(year));
 
   // 3. Audit Log - also secondary
   if (existing) {

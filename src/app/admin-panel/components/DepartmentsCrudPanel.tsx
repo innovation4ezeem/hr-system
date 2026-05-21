@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { toast } from 'sonner';
@@ -46,6 +46,24 @@ export default function DepartmentsCrudPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const addFormRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showAddForm) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addFormRef.current && !addFormRef.current.contains(e.target as Node)) {
+        if (e.target instanceof Element && e.target.closest('.btn-primary')) {
+          return;
+        }
+        setShowAddForm(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAddForm]);
+
   const [newDept, setNewDept] = useState<Partial<Department>>({
     status: 'active'
   });
@@ -216,7 +234,7 @@ export default function DepartmentsCrudPanel() {
       </div>
 
       {showAddForm && (
-        <div className="rounded-xl p-4" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
+        <div ref={addFormRef} className="rounded-xl p-4" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
           <h3 className="text-sm font-semibold mb-3" style={{ color: 'rgb(var(--text-primary))' }}>Create New Department</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">

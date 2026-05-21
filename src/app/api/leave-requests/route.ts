@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         dateRangeStart: payload.dateRangeStart,
         dateRangeEnd: payload.dateRangeEnd,
         employeeNameSearch: payload.employeeNameSearch,
-        department: payload.hodId === 'ALL' ? getRequestDepartment(request) : undefined,
+        department: (payload.hodId === 'ALL' && auth.role !== 'admin') ? getRequestDepartment(request) : undefined,
       });
 
       return NextResponse.json({ requests }, { status: 200 });

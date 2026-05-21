@@ -11,6 +11,8 @@ import {
   deletePerformanceComment
 } from '@/models/evaluationModel';
 import { listUsers, getUser } from '@/models/userModel';
+import { prisma } from '@/lib/prisma';
+import { upsertActivityScore, deleteActivityScore } from '@/models/activityScoreModel';
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,6 +49,51 @@ export async function GET(request: NextRequest) {
       if (!targetId) return NextResponse.json({ error: 'employeeId is required for comments' }, { status: 400 });
       const comments = await listPerformanceComments(targetId, periodLabel);
       return NextResponse.json({ comments });
+    }
+
+    if (mode === 'voting-candidates') {
+      const allUsers = await listUsers();
+      const filtered = allUsers.filter(u => u.status === 'active' && u.id !== requesterId);
+      return NextResponse.json({ candidates: filtered.map(u => ({ id: u.id, name: u.name })) });
+    }
+
+    if (mode === 'votes') {
+      const voterId = targetId || requesterId;
+      if (!voterId) return NextResponse.json({ error: 'voterId is required' }, { status: 400 });
+
+      const suffix = `-${periodLabel.replace(/\s+/g, '_')}`;
+      const records = await prisma.activity_score_entries.findMany({
+        where: {
+          id: {
+            startsWith: `VOTE-${voterId}-`,
+            endsWith: suffix
+          }
+        }
+      });
+
+      const votes: Record<string, { candidateId: string; reason: string }> = {};
+      const categoryKeys = ['accountability', 'sharpen_the_saw', 'innovative', 'collaboration', 'initiative'];
+
+      for (const row of records) {
+        const parts = row.id.split('-');
+        if (parts.length >= 4) {
+          const categoryKey = parts.find(p => categoryKeys.includes(p));
+          if (categoryKey) {
+            let reason = '';
+            const desc = row.description || '';
+            const match = desc.match(/Reason:\s*([\s\S]*)/);
+            if (match) {
+              reason = match[1];
+            }
+            votes[categoryKey] = {
+              candidateId: row.assigned_to_id,
+              reason: reason
+            };
+          }
+        }
+      }
+
+      return NextResponse.json({ votes });
     }
 
     if (mode === 'employees') {
@@ -91,6 +138,89 @@ export async function POST(request: NextRequest) {
 
     const requesterId = getRequestUserId(request);
     const requesterName = requesterId; // Ideally get name from auth or profiles
+
+    if (action === 'save-votes') {
+      const { votes, periodLabel } = body;
+      if (!periodLabel || !votes) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      }
+
+      const voterId = requesterId;
+      if (!voterId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      const voterProfile = await getUser(voterId);
+      const voterName = voterProfile?.name || voterId;
+
+      const categoryMapping = {
+        accountability: {
+          bucketName: 'Voting Form - Accountability (being responsible towards own responsibility)',
+          index: '1'
+        },
+        sharpen_the_saw: {
+          bucketName: 'Voting Form - Continuous learner (sharpen the saw)',
+          index: '2'
+        },
+        innovative: {
+          bucketName: 'Voting Form - Innovative & Creativity',
+          index: '3'
+        },
+        collaboration: {
+          bucketName: 'Voting Form - Effective Collaborator',
+          index: '4'
+        },
+        initiative: {
+          bucketName: 'Voting Form - Attitude (Initiative, Proactive, Voluntary)',
+          index: '5'
+        }
+      };
+
+      for (const [key, mapping] of Object.entries(categoryMapping)) {
+        const vote = votes[key];
+        const recordId = `VOTE-${voterId}-${key}-${periodLabel.replace(/\s+/g, '_')}`;
+
+        if (vote && vote.candidateId) {
+          const candidateId = vote.candidateId;
+          const reason = vote.reason || '';
+
+          const candidateProfile = await getUser(candidateId);
+          const candidateName = candidateProfile?.name || candidateId;
+
+          const date = new Date().toISOString().split('T')[0];
+          const year = new Date().getFullYear();
+          const monthName = new Date().toLocaleString('en-US', { month: 'long' });
+
+          await upsertActivityScore({
+            id: recordId,
+            activityName: mapping.bucketName,
+            date,
+            year,
+            month: monthName,
+            category: 'Popularity',
+            scoreBucket: mapping.bucketName,
+            score: 5,
+            sourceFolder: 'Self Evaluation',
+            description: reason ? `Reason: ${reason}` : '',
+            assignedToId: candidateId,
+            assignedToName: candidateName,
+            attachmentName: '',
+            attachmentUrl: '',
+            updatedBy: 'Anonymous',
+          });
+        } else {
+          try {
+            await prisma.activity_score_entries.deleteMany({
+              where: { id: recordId }
+            });
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }
+
+      return NextResponse.json({ success: true });
+    }
 
     if (action === 'upsert-reflection') {
       const { employeeId, periodLabel, reflection, hodComment } = body;
@@ -182,7 +312,17 @@ export async function POST(request: NextRequest) {
       const auth = requireRole(request, ['hod', 'admin']);
       if (auth.response) return auth.response;
 
-      const { performanceFormUrl, performanceFormLabel, evaluationSections } = body;
+      const {
+        performanceFormUrl,
+        performanceFormLabel,
+        evaluationSections,
+        showAttendedCourse,
+        showColleagueVoting,
+        courseTitle,
+        courseDescription,
+        votingTitle,
+        votingDescription,
+      } = body;
       const { getSystemSettings, saveSystemSettings } = await import('@/models/systemSettingsModel');
       const settings = await getSystemSettings();
       
@@ -191,6 +331,27 @@ export async function POST(request: NextRequest) {
       
       if (evaluationSections !== undefined) {
         settings.general.evaluationSections = evaluationSections;
+      }
+
+      if (showAttendedCourse !== undefined) {
+        settings.general.showAttendedCourse = showAttendedCourse;
+      }
+
+      if (showColleagueVoting !== undefined) {
+        settings.general.showColleagueVoting = showColleagueVoting;
+      }
+      
+      if (courseTitle !== undefined) {
+        settings.general.courseTitle = courseTitle;
+      }
+      if (courseDescription !== undefined) {
+        settings.general.courseDescription = courseDescription;
+      }
+      if (votingTitle !== undefined) {
+        settings.general.votingTitle = votingTitle;
+      }
+      if (votingDescription !== undefined) {
+        settings.general.votingDescription = votingDescription;
       }
       
       await saveSystemSettings(settings);

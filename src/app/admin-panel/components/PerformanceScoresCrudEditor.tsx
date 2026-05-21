@@ -546,6 +546,23 @@ export default function PerformanceScoresCrudEditor({
       setIsSyncing(false);
     }
   };
+  const handleMutationSync = async () => {
+    try {
+      const employees = employeeOptions.map(item => item.id).join(',');
+      const response = await fetch(`/api/performance-scores?year=${selectedYear}&employees=${encodeURIComponent(employees)}`, { headers: authHeaders });
+      if (!response.ok) throw new Error('Sync failed');
+      const data = await response.json();
+
+      setSheet(prev => ({
+        ...prev,
+        columns: data.columns || prev.columns,
+        sections: data.sections || prev.sections,
+        cellsByEmployee: data.cellsByEmployee || prev.cellsByEmployee,
+      }));
+    } catch (error) {
+      console.error('Failed to load updated scores', error);
+    }
+  };
   const activeCells = sheet.cellsByEmployee[activeEmployeeId] || {};
   const allRowLabels = sheet.sections.flatMap(section => section.rows.map(row => row.label));
   const allSectionTitles = sheet.sections.map(section => section.title);
@@ -723,7 +740,7 @@ export default function PerformanceScoresCrudEditor({
           showFilters
           showAddButton
           year={selectedYear}
-          onMutation={handleSync}
+          onMutation={handleMutationSync}
         />
       </div>
     );
