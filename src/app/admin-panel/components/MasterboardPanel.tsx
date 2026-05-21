@@ -8,6 +8,14 @@ import { useAppContext } from '@/context/AppContext';
 
 const sum = (values: number[]) => values.reduce((acc, val) => acc + val, 0);
 
+const RANKING_FILTER_MAP: Record<string, string> = {
+  'Accountability': 'Voting Form - Accountability (being responsible towards own responsibility)',
+  'Sharpen The Saw (Continuous Learner)': 'Voting Form - Continuous learner (sharpen the saw)',
+  'Innovative & Creativity': 'Voting Form - Innovative & Creativity',
+  'Collaboration (Effective Collaborator)': 'Voting Form - Effective Collaborator',
+  'Initiative': 'Voting Form - Attitude (Initiative, Proactive, Voluntary)',
+};
+
 type Employee = {
   id: string;
   name: string;
@@ -72,6 +80,7 @@ export default function MasterboardPanel({
   const [weights, setWeights] = useState<any>(null);
   const [dynamicBuckets, setDynamicBuckets] = useState<string[]>([]);
   const [bucketToCategory, setBucketToCategory] = useState<Record<string, string>>({});
+  const [localRankingFilter, setLocalRankingFilter] = useState('All Categories (Total)');
 
   useEffect(() => {
     const currentStartDate = externalStartDate !== undefined ? externalStartDate : startDate;
@@ -263,11 +272,12 @@ export default function MasterboardPanel({
 
     // Sort by selected category descending
     return list.sort((a, b) => {
-      const currentRankFilter = externalRankingFilter !== undefined ? externalRankingFilter : 'All Categories (Total)';
+      const currentRankFilter = externalRankingFilter !== undefined ? externalRankingFilter : localRankingFilter;
+      const mappedKey = RANKING_FILTER_MAP[currentRankFilter] || currentRankFilter;
       
       // Check for specific buckets first
-      if ((ACTIVITY_SCORE_BUCKETS as unknown as string[]).includes(currentRankFilter)) {
-        return (b.bucketScores[currentRankFilter] || 0) - (a.bucketScores[currentRankFilter] || 0);
+      if ((ACTIVITY_SCORE_BUCKETS as unknown as string[]).includes(mappedKey)) {
+        return (b.bucketScores[mappedKey] || 0) - (a.bucketScores[mappedKey] || 0);
       }
 
       if (currentRankFilter === 'Performance Only') return b.perfBase - a.perfBase;
@@ -276,7 +286,10 @@ export default function MasterboardPanel({
       
       return b.total - a.total;
     });
-  }, [entries, users, weights, externalSearch, searchTerm, externalRankingFilter]);
+  }, [entries, users, weights, externalSearch, searchTerm, externalRankingFilter, localRankingFilter]);
+
+  const activeRankingFilter = externalRankingFilter !== undefined ? externalRankingFilter : localRankingFilter;
+  const mappedRankFilter = RANKING_FILTER_MAP[activeRankingFilter] || activeRankingFilter;
 
   if (loading) {
     return (
@@ -322,11 +335,8 @@ export default function MasterboardPanel({
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Filter by Ranking</label>
                 <select 
                   className="input-base text-xs py-2.5"
-                  value={externalRankingFilter || 'All Categories (Total)'}
-                  onChange={e => {
-                    // This is only for local filter if hideFilters is false
-                    // If hideFilters is true, the parent controls it.
-                  }}
+                  value={activeRankingFilter}
+                  onChange={e => setLocalRankingFilter(e.target.value)}
                 >
                   <option>All Categories (Total)</option>
                   <option>Performance Only</option>
@@ -351,9 +361,9 @@ export default function MasterboardPanel({
                 <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgb(249 115 22)' }}>Performance</th>
                 <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgb(34 197 94)' }}>Participation</th>
                 <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgb(168 85 247)' }}>Popularity</th>
-                {externalRankingFilter && !['All Categories (Total)', 'Performance Only', 'Participation Only', 'Popularity Only'].includes(externalRankingFilter) && (
-                  <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider animate-in fade-in whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]" style={{ color: 'rgb(251 191 36)' }} title={externalRankingFilter}>
-                    {externalRankingFilter}
+                {activeRankingFilter && !['All Categories (Total)', 'Performance Only', 'Participation Only', 'Popularity Only'].includes(activeRankingFilter) && (
+                  <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider animate-in fade-in whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]" style={{ color: 'rgb(251 191 36)' }} title={activeRankingFilter}>
+                    {activeRankingFilter}
                   </th>
                 )}
                 <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgb(79 127 255)' }}>Total</th>
@@ -368,8 +378,8 @@ export default function MasterboardPanel({
                   <td className="px-4 py-3 text-center font-mono font-bold" style={{ color: 'rgb(249 115 22)' }}>{round2(row.perfBase)}</td>
                   <td className="px-4 py-3 text-center font-mono font-bold" style={{ color: 'rgb(34 197 94)' }}>{round2(row.categoryScores['Participation'] || 0)}</td>
                   <td className="px-4 py-3 text-center font-mono font-bold" style={{ color: 'rgb(168 85 247)' }}>{round2(row.categoryScores['Popularity'] || 0)}</td>
-                  {externalRankingFilter && !['All Categories (Total)', 'Performance Only', 'Participation Only', 'Popularity Only'].includes(externalRankingFilter) && (
-                    <td className="px-4 py-3 text-center font-mono font-bold animate-in fade-in" style={{ color: 'rgb(251 191 36)' }}>{round2(row.bucketScores[externalRankingFilter] || 0)}</td>
+                  {activeRankingFilter && !['All Categories (Total)', 'Performance Only', 'Participation Only', 'Popularity Only'].includes(activeRankingFilter) && (
+                    <td className="px-4 py-3 text-center font-mono font-bold animate-in fade-in" style={{ color: 'rgb(251 191 36)' }}>{round2(row.bucketScores[mappedRankFilter] || 0)}</td>
                   )}
                   <td className="px-4 py-3 text-center font-mono font-bold" style={{ color: 'rgb(79 127 255)' }}>{round2(row.total)}</td>
                 </tr>
@@ -379,8 +389,8 @@ export default function MasterboardPanel({
                 <td className="px-4 py-4 text-center font-mono" style={{ color: 'rgb(249 115 22)' }}>{round2(sum(scores.map(s => s.perfBase)))}</td>
                 <td className="px-4 py-4 text-center font-mono" style={{ color: 'rgb(34 197 94)' }}>{round2(sum(scores.map(s => s.categoryScores['Participation'] || 0)))}</td>
                 <td className="px-4 py-4 text-center font-mono" style={{ color: 'rgb(168 85 247)' }}>{round2(sum(scores.map(s => s.categoryScores['Popularity'] || 0)))}</td>
-                {externalRankingFilter && !['All Categories (Total)', 'Performance Only', 'Participation Only', 'Popularity Only'].includes(externalRankingFilter) && (
-                  <td className="px-4 py-4 text-center font-mono" style={{ color: 'rgb(251 191 36)' }}>{round2(sum(scores.map(s => s.bucketScores[externalRankingFilter] || 0)))}</td>
+                {activeRankingFilter && !['All Categories (Total)', 'Performance Only', 'Participation Only', 'Popularity Only'].includes(activeRankingFilter) && (
+                  <td className="px-4 py-4 text-center font-mono" style={{ color: 'rgb(251 191 36)' }}>{round2(sum(scores.map(s => s.bucketScores[mappedRankFilter] || 0)))}</td>
                 )}
                 <td className="px-4 py-4 text-center font-mono text-lg" style={{ color: 'rgb(79 127 255)' }}>{round2(sum(scores.map(s => s.total)))}</td>
               </tr>

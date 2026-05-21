@@ -75,7 +75,7 @@ export default function InlineEditableField({
       onBlur,
       disabled: isSaving,
       placeholder,
-      className: `input-base text-sm bg-slate-900 border-blue-500 focus:ring-blue-500 w-full disabled:opacity-70 ${inputClassName} ${error ? 'border-red-500' : ''}`,
+      className: `input-base text-sm border-blue-500 focus:ring-blue-500 w-full disabled:opacity-70 ${inputClassName} ${error ? 'border-red-500' : ''}`,
     };
 
     return (
@@ -117,7 +117,7 @@ export default function InlineEditableField({
 
   return (
     <div
-      className={`group relative flex items-center rounded px-2 -mx-2 py-1.5 transition-colors ${readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-white/5'} ${className}`}
+      className={`group relative flex items-center rounded px-2 -mx-2 py-1.5 transition-colors ${readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'} ${className}`}
       onClick={() => !readOnly && setIsEditing(true)}
       title={readOnly ? undefined : "Click to edit"}
     >
@@ -128,7 +128,7 @@ export default function InlineEditableField({
         {value || placeholder}
       </span>
       {!readOnly && (
-        <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1.5 rounded bg-slate-800 text-slate-400 hover:text-white shadow-lg">
+        <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white shadow-lg border border-black/5 dark:border-white/5">
           <Icon name="PencilSquareIcon" size={14} />
         </div>
       )}

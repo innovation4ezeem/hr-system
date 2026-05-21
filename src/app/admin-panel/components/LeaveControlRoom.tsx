@@ -841,13 +841,18 @@ export default function LeaveControlRoom() {
               <button
                 key={item.id}
                 onClick={() => jumpToSection(item.id)}
-                className="px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all font-medium"
+                className="px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all font-medium flex items-center gap-1.5"
                 style={{
                   background: activeHeaderSection === item.id ? 'rgba(79,127,255,0.16)' : 'transparent',
                   color: activeHeaderSection === item.id ? 'rgb(79 127 255)' : 'rgb(var(--text-secondary))',
                 }}
               >
-                {item.label}
+                <span>{item.label}</span>
+                {item.id === 'pending-queue' && pendingQueue.length > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    {pendingQueue.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>

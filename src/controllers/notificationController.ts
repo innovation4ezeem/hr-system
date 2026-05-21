@@ -200,13 +200,13 @@ export async function sendDualNotification(params: {
   }
 
   if (params.recipientEmail && params.recipientEmail.includes('@')) {
-    await sendEmailNotification(
+    sendEmailNotification(
       params.recipientEmail,
       params.title,
       params.emailMessage,
       params.provider,
       params.html,
-    );
+    ).catch(err => console.error('[sendDualNotification] Background email send failed:', err));
   } else {
     console.warn(`[sendDualNotification] Skipping email for ${params.recipientId} because email is missing or invalid: "${params.recipientEmail}"`);
   }
@@ -281,7 +281,7 @@ export async function sendVerificationEmailController(params: {
   const title = 'Verify Your Account';
   const emailMessage = `Hello ${params.recipientName}, please verify your account by clicking this link: ${params.verificationLink}`;
 
-  await sendEmailNotification(
+  sendEmailNotification(
     params.recipientEmail,
     title,
     emailMessage,
@@ -300,7 +300,7 @@ export async function sendVerificationEmailController(params: {
       <p style="font-size: 12px; color: #94a3b8;">If you did not create this account, you can safely ignore this email.</p>
     </div>
     `,
-  );
+  ).catch(err => console.error('[sendVerificationEmail] Background email send failed:', err));
 }
 
 export async function sendPasswordResetEmailController(params: {
@@ -318,13 +318,13 @@ export async function sendPasswordResetEmailController(params: {
     tempPassword: params.tempPassword
   });
 
-  await sendEmailNotification(
+  sendEmailNotification(
     params.recipientEmail,
     tpl.subject,
     tpl.subject, // Text version
     provider,
     tpl.html
-  );
+  ).catch(err => console.error('[sendPasswordResetEmail] Background email send failed:', err));
 }
 
 export async function sendLeaveSubmissionNotificationController(params: {
@@ -346,13 +346,13 @@ export async function sendLeaveSubmissionNotificationController(params: {
   const emailMessage = `${params.employeeName} submitted ${params.leaveType} leave (${params.startDate} to ${params.endDate}, ${params.units} day(s)). Review at: ${params.approvalUrl}`;
   const inAppMessage = `${params.employeeName} submitted a leave request awaiting your approval.`;
 
-  await sendEmailNotification(
+  sendEmailNotification(
     params.recipientEmail,
     title,
     emailMessage,
     provider,
     `<h2>Leave Approval Needed</h2><p>Hello ${params.recipientName},</p><p>${params.employeeName} submitted ${params.leaveType} leave (${params.startDate} to ${params.endDate}, ${params.units} day(s)).</p><p><a href="${params.approvalUrl}">Open Approval</a></p>`,
-  );
+  ).catch(err => console.error('[sendLeaveSubmissionNotification] Background email send failed:', err));
 
   await createDualChannelNotifications({
     recipientId: params.recipientId,
@@ -383,7 +383,8 @@ export async function sendLeaveApprovalNotificationController(params: {
   const emailMessage = `Your ${params.leaveType} leave request from ${params.startDate} to ${params.endDate} has been approved by ${params.approvedBy}.`;
   const inAppMessage = `Your ${params.leaveType} leave from ${params.startDate} has been approved.`;
 
-  await sendEmailNotification(params.recipientEmail, title, emailMessage, provider);
+  sendEmailNotification(params.recipientEmail, title, emailMessage, provider)
+    .catch(err => console.error('[sendLeaveApprovalNotification] Background email send failed:', err));
 
   await createDualChannelNotifications({
     recipientId: params.recipientId,
@@ -415,7 +416,8 @@ export async function sendLeaveRejectionNotificationController(params: {
   const emailMessage = `Your ${params.leaveType} leave request from ${params.startDate} to ${params.endDate} has been rejected by ${params.rejectedBy}. Reason: ${params.rejectionReason}`;
   const inAppMessage = `Your ${params.leaveType} leave from ${params.startDate} was rejected. Reason: ${params.rejectionReason}`;
 
-  await sendEmailNotification(params.recipientEmail, title, emailMessage, provider);
+  sendEmailNotification(params.recipientEmail, title, emailMessage, provider)
+    .catch(err => console.error('[sendLeaveRejectionNotification] Background email send failed:', err));
 
   await createDualChannelNotifications({
     recipientId: params.recipientId,

@@ -199,25 +199,24 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
   };
 
   return (
-    <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-900">
+    <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+      <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
         <div>
-          <h3 className="text-xl font-bold text-white">{profile.name}</h3>
-          <p className="text-xs text-slate-400 mt-1">{profile.email} • {profile.id}</p>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white">{profile.name}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{profile.email} • {profile.id}</p>
         </div>
         <div className="flex items-center gap-3">
           <span
-            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-slate-200"
-            style={{ borderColor: 'rgba(148,163,184,0.35)', background: 'rgba(15,23,42,0.7)' }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/70 shadow-sm"
             title={profile.lastUpdatedAt || 'N/A'}
           >
-            <Icon name="ClockIcon" size={12} className="text-blue-300" />
+            <Icon name="ClockIcon" size={12} className="text-blue-500 dark:text-blue-300" />
             Last updated: {formatLastUpdated(profile.lastUpdatedAt)}
           </span>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-all"
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all"
           >
             <Icon name="XMarkIcon" size={24} />
           </button>
@@ -225,11 +224,11 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800 bg-slate-900/30">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
         <button
           onClick={() => setEditingTab('personal')}
           className={`flex-1 px-4 py-4 text-sm font-bold transition-all border-b-2 ${
-            editingTab === 'personal' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-300'
+            editingTab === 'personal' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
           <div className="flex items-center justify-center gap-2">
@@ -240,7 +239,7 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
         <button
           onClick={() => setEditingTab('rewards')}
           className={`flex-1 px-4 py-4 text-sm font-bold transition-all border-b-2 ${
-            editingTab === 'rewards' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-300'
+            editingTab === 'rewards' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
           <div className="flex items-center justify-center gap-2">
@@ -251,7 +250,7 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
         <button
           onClick={() => setEditingTab('security')}
           className={`flex-1 px-4 py-4 text-sm font-bold transition-all border-b-2 ${
-            editingTab === 'security' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-300'
+            editingTab === 'security' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
           <div className="flex items-center justify-center gap-2">
@@ -287,7 +286,7 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
-                <div className="px-3 py-2 text-sm bg-slate-800/30 border border-slate-800 rounded-lg text-slate-500 italic">
+                <div className="px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 italic">
                   {profile.email} (Read-only)
                 </div>
               </div>
@@ -347,28 +346,28 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
           <div className="space-y-8 animate-fade-in">
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Icon name="GiftIcon" size={18} className="text-amber-400" />
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Icon name="GiftIcon" size={18} className="text-amber-500 dark:text-amber-400" />
                   Rewards & Awards
                 </h4>
-                <button onClick={() => addArrayItem('rewards')} className="text-xs font-bold text-blue-400 hover:text-blue-300">+ Add Reward</button>
+                <button onClick={() => addArrayItem('rewards')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">+ Add Reward</button>
               </div>
               <div className="space-y-3">
                 {(profile.rewards || []).length === 0 && <p className="text-xs text-slate-500 italic">No rewards recorded.</p>}
                 {(profile.rewards || []).map((item, idx) => (
-                  <div key={`rew-${idx}`} className="p-3 rounded-xl bg-slate-800/30 border border-slate-700/50 space-y-2 relative group">
+                  <div key={`rew-${idx}`} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 space-y-2 relative group">
                     <div className="grid grid-cols-2 gap-2">
                       <InlineEditableField
                         initialValue={item.title || ''}
                         onSave={(val) => updateAndSaveArrayField('rewards', idx, { title: val })}
                         placeholder="Reward Title"
-                        textClassName="text-xs font-bold text-white"
+                        textClassName="text-xs font-bold text-slate-900 dark:text-white"
                       />
                       <InlineEditableField
                         initialValue={item.date || item.year || ''}
                         onSave={(val) => updateAndSaveArrayField('rewards', idx, { date: val, year: val })}
                         placeholder="2024"
-                        textClassName="text-xs text-amber-400 font-mono"
+                        textClassName="text-xs text-amber-600 dark:text-amber-400 font-mono"
                       />
                     </div>
                     <InlineEditableField
@@ -376,14 +375,14 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                       initialValue={item.description || ''}
                       onSave={(val) => updateAndSaveArrayField('rewards', idx, { description: val })}
                       placeholder="Achievement details..."
-                      textClassName="text-xs text-slate-400"
+                      textClassName="text-xs text-slate-500 dark:text-slate-400"
                     />
                     <button 
                       onClick={async () => {
                         const next = (profile.rewards || []).filter((_, i) => i !== idx);
                         await handleAutoSave('rewards', next);
                       }} 
-                      className="absolute top-2 right-2 p-1 rounded hover:bg-red-400/10 text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute top-2 right-2 p-1 rounded hover:bg-red-500/10 text-red-500 dark:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <Icon name="TrashIcon" size={14} />
                     </button>
@@ -394,28 +393,28 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
 
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Icon name="AcademicCapIcon" size={18} className="text-emerald-400" />
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Icon name="AcademicCapIcon" size={18} className="text-emerald-500 dark:text-emerald-400" />
                   Key Achievements
                 </h4>
-                <button onClick={() => addArrayItem('achievements')} className="text-xs font-bold text-blue-400 hover:text-blue-300">+ Add Achievement</button>
+                <button onClick={() => addArrayItem('achievements')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">+ Add Achievement</button>
               </div>
               <div className="space-y-3">
                 {(profile.achievements || []).length === 0 && <p className="text-xs text-slate-500 italic">No achievements recorded.</p>}
                 {(profile.achievements || []).map((item, idx) => (
-                  <div key={`ach-${idx}`} className="p-3 rounded-xl bg-slate-800/30 border border-slate-700/50 space-y-2 relative group">
+                  <div key={`ach-${idx}`} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 space-y-2 relative group">
                     <div className="grid grid-cols-2 gap-2">
                       <InlineEditableField
                         initialValue={item.title || ''}
                         onSave={(val) => updateAndSaveArrayField('achievements', idx, { title: val })}
                         placeholder="Achievement Name"
-                        textClassName="text-xs font-bold text-white"
+                        textClassName="text-xs font-bold text-slate-900 dark:text-white"
                       />
                       <InlineEditableField
                         initialValue={item.date || ''}
                         onSave={(val) => updateAndSaveArrayField('achievements', idx, { date: val })}
                         placeholder="Month YYYY"
-                        textClassName="text-xs text-emerald-400 font-mono"
+                        textClassName="text-xs text-emerald-600 dark:text-emerald-400 font-mono"
                       />
                     </div>
                     <InlineEditableField
@@ -423,14 +422,14 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                       initialValue={item.description || ''}
                       onSave={(val) => updateAndSaveArrayField('achievements', idx, { description: val })}
                       placeholder="Describe the impact..."
-                      textClassName="text-xs text-slate-400"
+                      textClassName="text-xs text-slate-500 dark:text-slate-400"
                     />
                     <button 
                       onClick={async () => {
                         const next = (profile.achievements || []).filter((_, i) => i !== idx);
                         await handleAutoSave('achievements', next);
                       }} 
-                      className="absolute top-2 right-2 p-1 rounded hover:bg-red-400/10 text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute top-2 right-2 p-1 rounded hover:bg-red-500/10 text-red-500 dark:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <Icon name="TrashIcon" size={14} />
                     </button>
@@ -441,15 +440,15 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
 
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Icon name="BriefcaseIcon" size={18} className="text-blue-400" />
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Icon name="BriefcaseIcon" size={18} className="text-blue-500 dark:text-blue-400" />
                   Experience in Company
                 </h4>
-                <button onClick={() => addArrayItem('experienceInOffice')} className="text-xs font-bold text-blue-400 hover:text-blue-300">+ Add Experience</button>
+                <button onClick={() => addArrayItem('experienceInOffice')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">+ Add Experience</button>
               </div>
               <div className="space-y-3">
                 {(profile.experienceInOffice || []).length === 0 && <p className="text-xs text-slate-500 italic">No company experience recorded.</p>}                {(profile.experienceInOffice || []).map((item, idx) => (
-                  <div key={`exp-${idx}`} className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/50 space-y-4 relative group">
+                  <div key={`exp-${idx}`} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 space-y-4 relative group">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-slate-500 uppercase">Role Title</label>
@@ -457,7 +456,7 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                           initialValue={item.title || ''}
                           onSave={(val) => updateAndSaveArrayField('experienceInOffice', idx, { title: val })}
                           placeholder="Ex: Senior Executive"
-                          textClassName="text-xs font-semibold text-white"
+                          textClassName="text-xs font-semibold text-slate-900 dark:text-white"
                         />
                       </div>
                       <div className="space-y-1">
@@ -466,20 +465,20 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                           initialValue={item.dept || ''}
                           onSave={(val) => updateAndSaveArrayField('experienceInOffice', idx, { dept: val })}
                           placeholder="Ex: Operations"
-                          textClassName="text-xs text-blue-400"
+                          textClassName="text-xs text-blue-600 dark:text-blue-400"
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-3 p-3 rounded-lg bg-slate-900/50 border border-slate-800">
+                    <div className="space-y-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
                       <label className="flex items-center gap-2 cursor-pointer group/cb">
                         <input 
                           type="checkbox" 
                           checked={!!item.isCurrent} 
                           onChange={async (e) => await updateAndSaveArrayField('experienceInOffice', idx, { isCurrent: e.target.checked })}
-                          className="rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-blue-500"
+                          className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-blue-500 focus:ring-blue-500"
                         />
-                        <span className="text-xs font-medium text-slate-300 group-hover/cb:text-white transition-colors">I am currently in this role</span>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300 group-hover/cb:text-slate-800 dark:group-hover/cb:text-white transition-colors">I am currently in this role</span>
                       </label>
 
                       <div className="grid grid-cols-2 gap-4">
@@ -487,7 +486,7 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                           <label className="text-[10px] font-bold text-slate-500 uppercase">Start Date</label>
                           <input 
                             type="month" 
-                            className="input-base text-xs [color-scheme:dark] bg-transparent border-none p-0 focus:ring-0 cursor-pointer" 
+                            className="input-base text-xs dark:[color-scheme:dark] bg-transparent border-none p-0 focus:ring-0 cursor-pointer" 
                             value={item.startDate || ''} 
                             onChange={async (e) => await updateAndSaveArrayField('experienceInOffice', idx, { startDate: e.target.value })} 
                             onClick={(e) => (e.currentTarget as any).showPicker?.()}
@@ -498,7 +497,7 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                             <label className="text-[10px] font-bold text-slate-500 uppercase">End Date</label>
                             <input 
                               type="month" 
-                              className="input-base text-xs [color-scheme:dark] bg-transparent border-none p-0 focus:ring-0 cursor-pointer" 
+                              className="input-base text-xs dark:[color-scheme:dark] bg-transparent border-none p-0 focus:ring-0 cursor-pointer" 
                               value={item.endDate || ''} 
                               onChange={async (e) => await updateAndSaveArrayField('experienceInOffice', idx, { endDate: e.target.value })} 
                               onClick={(e) => (e.currentTarget as any).showPicker?.()}
@@ -515,20 +514,20 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                         initialValue={item.description || ''}
                         onSave={(val) => updateAndSaveArrayField('experienceInOffice', idx, { description: val })}
                         placeholder="Briefly describe your responsibilities..."
-                        textClassName="text-xs text-slate-400"
+                        textClassName="text-xs text-slate-500 dark:text-slate-400"
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-700/30">
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700/30">
                       <div className="text-[10px] text-slate-500">
-                        Period: <span className="text-slate-300">{item.period || 'Not set'}</span>
+                        Period: <span className="text-slate-700 dark:text-slate-300">{item.period || 'Not set'}</span>
                       </div>
                       <button 
                         onClick={async () => {
                           const next = (profile.experienceInOffice || []).filter((_, i) => i !== idx);
                           await handleAutoSave('experienceInOffice', next);
                         }} 
-                        className="p-1 rounded hover:bg-red-400/10 text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-1 rounded hover:bg-red-500/10 text-red-500 dark:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Icon name="TrashIcon" size={14} />
                       </button>
@@ -553,7 +552,7 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                 <div className="flex-1">
                   <input
                     type="password"
-                    className="input-base text-sm bg-slate-900 border-slate-700 text-white"
+                    className="input-base text-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                     placeholder="New password (min 8 chars)"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -569,7 +568,7 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
               <div className="flex gap-2">
                 <button
                   onClick={() => toast.info('MFA Reset triggered (Simulated)')}
-                  className="px-4 py-2 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700"
+                  className="px-4 py-2 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700"
                 >
                   Reset MFA Session
                 </button>
@@ -581,10 +580,10 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-slate-800 flex items-center justify-end gap-3 bg-slate-900/50">
+      <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 bg-slate-50 dark:bg-slate-900/50">
         <button
           onClick={onClose}
-          className="px-8 py-2 rounded-xl text-sm font-bold text-white bg-slate-800 hover:bg-slate-700 transition-all shadow-lg active:scale-95"
+          className="px-8 py-2 rounded-xl text-sm font-bold text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95"
         >
           Close Editor
         </button>

@@ -165,19 +165,19 @@ export default function LoginClient() {
         <div className="relative flex items-center gap-3">
           <AppLogo size={44} />
           <div>
-            <span className="text-2xl font-bold tracking-tight" style={{ color: 'rgb(var(--text-primary))' }}>EzeemOps</span>
-            <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>Internal Operations & HR System</p>
+            <span className="text-2xl font-bold tracking-tight text-white">EzeemOps</span>
+            <p className="text-xs text-slate-400">Internal Operations & HR System</p>
           </div>
         </div>
 
         {/* Hero Content */}
         <div className="relative space-y-8">
           <div>
-            <h1 className="text-4xl xl:text-5xl font-bold leading-tight mb-4" style={{ color: 'rgb(var(--text-primary))' }}>
+            <h1 className="text-4xl xl:text-5xl font-bold leading-tight mb-4 text-white">
               Your Operations<br />
               <span style={{ color: 'rgb(79 127 255)' }}>Command Center</span>
             </h1>
-            <p className="text-lg leading-relaxed max-w-lg" style={{ color: 'rgb(140 140 170)' }}>
+            <p className="text-lg leading-relaxed max-w-lg text-slate-300">
               Manage OKR performance, track KPI tasks, handle HR leave requests, and monitor team health — all in one place.
             </p>
           </div>
@@ -195,7 +195,7 @@ export default function LoginClient() {
                   style={{ background: `${f.color}22` }}>
                   <Icon name={f.icon as never} size={16} style={{ color: f.color }} />
                 </div>
-                <span className="text-sm" style={{ color: 'rgb(180 180 210)' }}>{f.label}</span>
+                <span className="text-sm text-slate-200">{f.label}</span>
               </div>
             ))}
           </div>
@@ -203,7 +203,7 @@ export default function LoginClient() {
 
         {/* Footer */}
         <div className="relative">
-          <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
+          <p className="text-xs text-slate-500">
             © {new Date().getFullYear()} Ezeem Sdn. Bhd. · Internal use only · v2.4.1
           </p>
         </div>
@@ -215,7 +215,7 @@ export default function LoginClient() {
           {/* Mobile Logo */}
           <div className="flex lg:hidden items-center gap-3 mb-6">
             <AppLogo size={36} />
-            <span className="text-xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>EzeemOps</span>
+            <span className="text-xl font-bold text-white">EzeemOps</span>
           </div>
 
 
