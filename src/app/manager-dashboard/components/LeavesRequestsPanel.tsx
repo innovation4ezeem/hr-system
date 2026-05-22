@@ -119,6 +119,7 @@ export default function LeaveRequestsPanel({ compact = false, departmentScope = 
   );
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const effectiveDepartment = departmentScope ?? (identity.role === 'hod' ? identity.department : null);
 
@@ -162,6 +163,7 @@ export default function LeaveRequestsPanel({ compact = false, departmentScope = 
       : { action: 'reject', actor: identity.userId, reason: 'Rejected from manager panel', comment: '' };
 
     try {
+      setProcessingId(requestId);
       const response = await fetch(`/api/leave-requests/${requestId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
@@ -182,6 +184,8 @@ export default function LeaveRequestsPanel({ compact = false, departmentScope = 
       toast.success(action === 'approve' ? 'Leave request approved' : 'Leave request rejected');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : `${action === 'approve' ? 'Approval' : 'Rejection'} failed`);
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -258,17 +262,19 @@ export default function LeaveRequestsPanel({ compact = false, departmentScope = 
                       <div className="flex gap-1">
                         <button
                           onClick={() => void handleDecision(req.id, 'approve')}
-                          className="p-1.5 rounded-lg hover:bg-emerald-400/10 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-emerald-400/10 transition-colors disabled:opacity-50"
                           title="Approve leave request"
                           style={{ color: 'rgb(52 211 153)' }}
+                          disabled={processingId === req.id}
                         >
                           <Icon name="CheckIcon" size={14} />
                         </button>
                         <button
                           onClick={() => void handleDecision(req.id, 'reject')}
-                          className="p-1.5 rounded-lg hover:bg-red-400/10 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-red-400/10 transition-colors disabled:opacity-50"
                           title="Reject leave request"
                           style={{ color: 'rgb(248 113 113)' }}
+                          disabled={processingId === req.id}
                         >
                           <Icon name="XMarkIcon" size={14} />
                         </button>

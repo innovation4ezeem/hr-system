@@ -421,17 +421,17 @@ function UsersPanel() {
   };
 
   const handleEdit = (userId: string, patch: Partial<User>) => {
+    // 1. Snapshot old state for rollback
+    const currentUser = users.find(u => u.id === userId);
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, ...patch };
+
+    // 2. Optimistically update UI immediately
+    setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+    setSaveStatus('saving');
+
     void (async () => {
       try {
-        // Find current user in the latest state to build full object for API
-        // We can't easily get latest state here without refs or functional updates
-        // but we can at least update the UI optimistically or after the call.
-        setSaveStatus('saving');
-        
-        const currentUser = users.find(u => u.id === userId);
-        if (!currentUser) return;
-        const updatedUser = { ...currentUser, ...patch };
-
         const response = await fetch(`/api/users?id=${encodeURIComponent(userId)}&t=${Date.now()}`, {
           method: 'PUT',
           headers: { 
@@ -440,13 +440,12 @@ function UsersPanel() {
           },
           body: JSON.stringify(updatedUser),
         });
+        
         if (!response.ok) {
           const body = await response.json().catch(() => ({}));
           throw new Error(body.error || 'Update user failed');
         }
         
-        // Use functional update to ensure we don't overwrite other concurrent changes
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...patch } : u));
         setEditUser(null);
         setSaveStatus('saved');
 
@@ -468,6 +467,8 @@ function UsersPanel() {
           toast.success(silentMode ? 'User updated (Silent)' : 'User updated');
         }
       } catch (error) {
+        // Rollback optimistic update
+        setUsers(prev => prev.map(u => u.id === userId ? currentUser : u));
         setSaveStatus('draft');
         toast.error(error instanceof Error ? error.message : 'Update user failed');
       }

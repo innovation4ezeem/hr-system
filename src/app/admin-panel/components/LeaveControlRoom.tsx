@@ -980,14 +980,16 @@ export default function LeaveControlRoom() {
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <button 
-                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/10" 
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/10 disabled:opacity-50" 
                           onClick={() => approveRequest(r.id)}
+                          disabled={saveState === 'saving'}
                         >
                           Approve
                         </button>
                         <button 
-                          className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-600/10" 
+                          className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-600/10 disabled:opacity-50" 
                           onClick={() => rejectRequest(r.id)}
+                          disabled={saveState === 'saving'}
                         >
                           Reject
                         </button>

@@ -152,8 +152,34 @@ export function AppProvider({ children, bootstrap }: { children: ReactNode; boot
       }
     };
 
+    const syncSession = async () => {
+      if (!finalUserId) return;
+      try {
+        const res = await fetch('/api/auth/sync');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.updated) {
+            // Token was refreshed! Update local storage and reload the page
+            // to apply the new role and department fully.
+            localStorage.setItem('ezeem_role', data.role);
+            sessionStorage.setItem('ezeem_role', data.role);
+            localStorage.setItem('ezeem_department', data.department);
+            sessionStorage.setItem('ezeem_department', data.department);
+            localStorage.setItem('ezeem_name', decodeURIComponent(data.name));
+            sessionStorage.setItem('ezeem_name', decodeURIComponent(data.name));
+            
+            // Reload page so middleware gets the new token
+            window.location.reload();
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync session:', err);
+      }
+    };
+
     void loadTheme();
     void loadYears();
+    void syncSession();
     setLoading(false);
   }, []);
 
