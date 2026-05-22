@@ -270,8 +270,18 @@ export default function ApplyLeaveRequestForm() {
           toHalf: form.halfDay ? form.toHalf : undefined,
         }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Failed to submit request');
+      const payload = await response.json().catch(() => ({}));
+      
+      if (!response.ok) {
+        const errorMsg = payload?.error || 'Failed to submit request';
+        if (response.status === 500 && (errorMsg.toLowerCase().includes('pool timeout') || errorMsg.toLowerCase().includes('prisma') || errorMsg.toLowerCase().includes('connection'))) {
+          toast.error('System connection timeout. Refreshing page to recover...');
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        }
+        throw new Error(errorMsg);
+      }
+      
       clearDraft();
       toast.success('Leave application submitted — awaiting manager approval');
       const reqId = payload?.request?.id as string | undefined;

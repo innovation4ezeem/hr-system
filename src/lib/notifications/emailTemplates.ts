@@ -79,11 +79,11 @@ export const emailTemplates = {
         <strong>Reason:</strong> ${d.reason}</p>
         
         <div style="margin: 25px 0;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4028'}/manager-dashboard/leave?requestId=${d.id}&action=approve" 
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/manager-dashboard/leave?requestId=${d.id}&action=approve" 
              style="background-color: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-right: 10px; display: inline-block;">
              Approve Request
           </a>
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4028'}/manager-dashboard/leave?requestId=${d.id}&action=reject" 
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/manager-dashboard/leave?requestId=${d.id}&action=reject" 
              style="background-color: #dc2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
              Reject Request
           </a>

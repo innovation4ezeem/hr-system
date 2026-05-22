@@ -2,16 +2,23 @@
 import React, { useState } from 'react';
 import LeaveApprovalQueuePanel from '../components/LeaveApprovalQueuePanel';
 import TeamLeaveCalendarPanel from '../components/TeamLeaveCalendarPanel';
+import LeaveRequestsPanel from '../components/LeavesRequestsPanel';
+import { useAppContext } from '@/context/AppContext';
+import { getDepartmentFilter, canEditFeature } from '@/lib/rbac';
 
 const TABS = [
   { key: 'queue', label: 'Approval Queue', icon: '📋' },
   { key: 'calendar', label: 'Team Calendar', icon: '📅' },
+  { key: 'log', label: 'Team Leave Log', icon: '📝' },
 ] as const;
 
 type Tab = typeof TABS[number]['key'];
 
 export default function ManagerLeavePageClient() {
   const [activeTab, setActiveTab] = useState<Tab>('queue');
+  const { userRole, userDepartment } = useAppContext();
+  const departmentScope = getDepartmentFilter(userRole, userDepartment);
+  const canManageLeave = canEditFeature(userRole, 'leave_system');
 
   return (
     <div className="space-y-5">
@@ -36,6 +43,7 @@ export default function ManagerLeavePageClient() {
       {/* Panel content */}
       {activeTab === 'queue' && <LeaveApprovalQueuePanel />}
       {activeTab === 'calendar' && <TeamLeaveCalendarPanel />}
+      {activeTab === 'log' && <LeaveRequestsPanel departmentScope={departmentScope} canManage={canManageLeave} />}
     </div>
   );
 }
