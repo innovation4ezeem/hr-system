@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
     const mode = searchParams.get('mode') || 'scores';
 
     if (mode === 'config') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = performanceConfigQuerySchema.safeParse(toObject(searchParams));
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'scores') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = performanceScoresQuerySchema.safeParse(toObject(searchParams));
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'penalty-types') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = performancePenaltyTypesQuerySchema.safeParse(toObject(searchParams));
@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'penalties') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = performancePenaltiesQuerySchema.safeParse(toObject(searchParams));
@@ -233,7 +233,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'report') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = performanceReportQuerySchema.safeParse(toObject(searchParams));
@@ -298,7 +298,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'profile') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = performanceProfileQuerySchema.safeParse(toObject(searchParams));
@@ -322,7 +322,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'activities') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const employeeId = searchParams.get('employeeId');
@@ -348,7 +348,7 @@ export async function GET(request: NextRequest) {
 
     if (mode === 'service-years') {
 
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = serviceYearsQuerySchema.safeParse(toObject(searchParams));
@@ -406,7 +406,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'upsert-input') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = upsertInputActionSchema.safeParse(body);
@@ -427,7 +427,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'calculate-score') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = calculateScoreActionSchema.safeParse(body);
@@ -448,7 +448,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'auto-calculate-period') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = autoCalculateActionSchema.safeParse(body);
@@ -469,7 +469,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'approve-score') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = approveScoreActionSchema.safeParse(body);
@@ -515,7 +515,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'create-penalty') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = createPenaltyActionSchema.safeParse(body);
@@ -544,7 +544,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'update-penalty') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = updatePenaltyActionSchema.safeParse(body);
@@ -619,7 +619,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'get-profile') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = getUnifiedProfileActionSchema.safeParse(body);

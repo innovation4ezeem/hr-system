@@ -27,6 +27,12 @@ interface SelfEvaluationSectionProps {
       attributes: Array<{ id: string; label: string; description?: string }>;
       assignedEmployeeIds?: string[];
     }>;
+    showAttendedCourse?: boolean;
+    showColleagueVoting?: boolean;
+    votingTitle?: string;
+    votingDescription?: string;
+    courseTitle?: string;
+    courseDescription?: string;
   };
   periodLabel?: string;
   forceSelfView?: boolean;
@@ -70,6 +76,9 @@ export default function SelfEvaluationSection({
 }: SelfEvaluationSectionProps) {
   const { selectedYear, userRole, userName, userId, userDepartment, buildAuthHeaders } = useAppContext();
   const [candidates, setCandidates] = useState<{ id: string; name: string }[]>([]);
+  const currentQuarter = Math.floor(new Date().getMonth() / 3) + 1;
+  const currentMonthStr = new Date().toLocaleString('default', { month: 'short' }) + ' ' + selectedYear;
+
   const [votes, setVotes] = useState<Record<string, { candidateId: string; reason: string }>>({
     accountability: { candidateId: '', reason: '' },
     sharpen_the_saw: { candidateId: '', reason: '' },
@@ -78,6 +87,12 @@ export default function SelfEvaluationSection({
     initiative: { candidateId: '', reason: '' },
   });
   const [savingVotes, setSavingVotes] = useState(false);
+
+  // Popularity Voting States
+  const [popVoteCandidate, setPopVoteCandidate] = useState('');
+  const [savingPopVote, setSavingPopVote] = useState(false);
+  const [popVotesUsed, setPopVotesUsed] = useState(0);
+
   const isHodView = (userRole === 'hod' || userRole === 'admin') && !forceSelfView;
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('discussion');
   const [reflection, setReflection] = useState('');
@@ -137,8 +152,7 @@ export default function SelfEvaluationSection({
   const [tempShowColleagueVoting, setTempShowColleagueVoting] = useState<boolean>(general?.showColleagueVoting !== false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const currentQuarter = Math.floor(new Date().getMonth() / 3) + 1;
-  const [selectedPeriod, setSelectedPeriod] = useState(propPeriodLabel || `Q${currentQuarter} ${selectedYear}`);
+  const [selectedPeriod, setSelectedPeriod] = useState(propPeriodLabel || currentMonthStr);
 
   const authHeaders = useMemo(() => buildAuthHeaders(), [buildAuthHeaders]);
 
@@ -147,9 +161,9 @@ export default function SelfEvaluationSection({
     if (propPeriodLabel) {
       setSelectedPeriod(propPeriodLabel);
     } else {
-      setSelectedPeriod(`Q${currentQuarter} ${selectedYear}`);
+      setSelectedPeriod(currentMonthStr);
     }
-  }, [propPeriodLabel, selectedYear, currentQuarter]);
+  }, [propPeriodLabel, selectedYear, currentQuarter, currentMonthStr]);
 
   // Poll settings periodically to enable real-time sync of sections/toggles
   useEffect(() => {
@@ -184,9 +198,7 @@ export default function SelfEvaluationSection({
   const periodLabel = selectedPeriod;
 
   const availablePeriods = useMemo(() => {
-    const q = [`Q1 ${selectedYear}`, `Q2 ${selectedYear}`, `Q3 ${selectedYear}`, `Q4 ${selectedYear}`];
-    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => `${month} ${selectedYear}`);
-    return [...q, ...m];
+    return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => `${month} ${selectedYear}`);
   }, [selectedYear]);
 
   const loadData = async () => {
@@ -246,7 +258,21 @@ export default function SelfEvaluationSection({
             })
         );
 
-        // 3. Load Attachments
+        // 3. Fetch Popularity Votes Used
+        if (userId) {
+          promises.push(
+            fetch(`/api/popularity-votes?month=${currentMonthStr}`, { headers: authHeaders })
+              .then(res => res.json())
+              .then(data => {
+                if (data.votes) {
+                  const used = data.votes.filter((v: any) => v.voter_id === userId).length;
+                  setPopVotesUsed(used);
+                }
+              })
+          );
+        }
+
+        // 4. Load Attachments
         promises.push(
           fetch(`/api/evaluations?mode=attachments&employeeId=${effectiveId}`, { headers: authHeaders })
             .then(res => res.json())
@@ -257,7 +283,7 @@ export default function SelfEvaluationSection({
             })
         );
 
-        // 4. Load Votes
+        // 5. Load Votes
         promises.push(
           fetch(`/api/evaluations?mode=votes&employeeId=${effectiveId}&periodLabel=${periodLabel}`, { headers: authHeaders })
             .then(res => res.json())
@@ -321,6 +347,33 @@ export default function SelfEvaluationSection({
       toast.error('Failed to save votes');
     } finally {
       setSavingVotes(false);
+    }
+  };
+
+  const handleSavePopVote = async () => {
+    if (!popVoteCandidate) {
+      toast.error('Please select a colleague');
+      return;
+    }
+    try {
+      setSavingPopVote(true);
+      const res = await fetch('/api/popularity-votes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({
+          targetEmployeeId: popVoteCandidate,
+          month: currentMonthStr,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit vote');
+      toast.success('Popularity sticker submitted successfully!');
+      setPopVotesUsed(prev => prev + 1);
+      setPopVoteCandidate('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save popularity vote');
+    } finally {
+      setSavingPopVote(false);
     }
   };
 
@@ -622,24 +675,7 @@ export default function SelfEvaluationSection({
         </div>
       </div>
 
-      {/* Sub-Tabs */}
-      <div className="flex px-4 border-b mb-6" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-        <button 
-          onClick={() => setActiveSubTab('overview')}
-          className={`px-6 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${activeSubTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))]'}`}
-        >
-          Attributes
-        </button>
-        <button 
-          onClick={() => setActiveSubTab('discussion')}
-          className={`px-6 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${activeSubTab === 'discussion' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))]'}`}
-        >
-          Discussion & Attachments
-        </button>
-      </div>
-
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 min-h-[400px]">
-        {activeSubTab === 'overview' && (
           <div className="space-y-6">
             {isHodView && (
               <div className="flex justify-end">
@@ -913,6 +949,53 @@ export default function SelfEvaluationSection({
                   </div>
                 )}
 
+                {/* Live Popularity Voting Section (for Employees) */}
+                {(!isHodView || targetEmployee === userId) && (
+                  <div className="space-y-6 pt-6 border-t border-white/5 mt-6">
+                    <div className="rounded-xl p-5 bg-gradient-to-br from-fuchsia-50 to-purple-50 dark:from-fuchsia-500/10 dark:to-purple-500/10 border border-fuchsia-200 dark:border-fuchsia-500/20">
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-sm font-bold flex items-center gap-2 text-fuchsia-600 dark:text-fuchsia-400">
+                          <Icon name="StarIcon" size={16} />
+                          Live Popularity Voting
+                        </h4>
+                        <div className="text-xs font-bold px-2 py-1 rounded bg-fuchsia-100 dark:bg-fuchsia-500/20 text-fuchsia-700 dark:text-fuchsia-300">
+                          Stickers Used: {popVotesUsed} / 3 this month
+                        </div>
+                      </div>
+                      <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                        Give up to 3 stickers each month to your favorite colleagues! Points are awarded based on your role and contribute to the live popularity leaderboard.
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl p-5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-4">
+                      <label className="text-xs font-bold block text-slate-800 dark:text-slate-200">Send a Sticker To:</label>
+                      <select
+                        value={popVoteCandidate}
+                        onChange={e => setPopVoteCandidate(e.target.value)}
+                        disabled={popVotesUsed >= 3 || savingPopVote}
+                        className="bg-black/[0.03] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 dark:text-white w-full max-w-md focus:ring-2 focus:ring-fuchsia-500 cursor-pointer disabled:opacity-50"
+                      >
+                        <option value="" className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">Select Colleague</option>
+                        {candidates.map(candidate => (
+                          <option key={candidate.id} value={candidate.id} className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">
+                            {candidate.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <div className="flex justify-end">
+                        <button
+                          onClick={handleSavePopVote}
+                          disabled={savingPopVote || popVotesUsed >= 3 || !popVoteCandidate}
+                          className="px-4 py-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-fuchsia-500/20 disabled:opacity-50"
+                        >
+                          {savingPopVote ? 'Sending...' : 'Send Sticker'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Attended Course & PLGT Play Custom Form Section */}
                 {generalSettings?.showAttendedCourse !== false && (
                   <div className="space-y-6 pt-6 border-t border-black/5 dark:border-white/5 mt-6">
@@ -1125,118 +1208,6 @@ export default function SelfEvaluationSection({
               </div>
             )}
           </div>
-        )}
-
-        {activeSubTab === 'discussion' && (
-          <div className="space-y-8">
-            {/* Context Header for HOD */}
-            {isHodView && (
-              <div className="flex items-center justify-between p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600">
-                    <Icon name="UserIcon" size={20} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgb(var(--text-secondary))' }}>Discussion Thread For</p>
-                    <span className="text-sm font-bold text-indigo-500">
-                      {employees.find(emp => emp.id === targetEmployee)?.name || 'Loading employee...'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Real-time Sync Active</span>
-                </div>
-              </div>
-            )}
-
-            {/* Chat/Discussion Thread */}
-            <PerformanceCommentThread 
-              employeeId={isHodView ? targetEmployee : (userId || '')}
-              periodLabel={periodLabel}
-              authHeaders={authHeaders}
-              currentUserId={userId || ''}
-            />
-
-            {/* Attachments Section */}
-            <div className="rounded-xl overflow-hidden" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
-              <div className="px-5 py-4 border-b" style={{ borderColor: 'rgb(var(--border-subtle))' }}>
-                <h3 className="text-base font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>Shared Documents</h3>
-                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-muted))' }}>
-                  {isHodView
-                    ? 'Attach documents for employees. They can view these files on their Self Evaluation side.'
-                    : 'Documents shared by your HOD for your evaluation reference.'}
-                </p>
-              </div>
-
-              {isHodView && (
-                <div className="p-5 border-b" style={{ borderColor: 'rgb(var(--border-subtle))' }}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs mb-1.5 block font-medium" style={{ color: 'rgb(var(--text-secondary))' }}>Choose File</label>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="input-base text-xs"
-                        onChange={e => setSelectedFileName(e.target.files?.[0]?.name || '')}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs mb-1.5 block font-medium" style={{ color: 'rgb(var(--text-secondary))' }}>Context / Note</label>
-                      <input
-                        value={attachmentNote}
-                        onChange={e => setAttachmentNote(e.target.value)}
-                        className="input-base text-xs"
-                        placeholder="e.g. Reference for Q2 goals"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <button onClick={handleAttach} className="btn-primary text-sm flex items-center gap-2">
-                      <Icon name="PaperClipIcon" size={14} />
-                      Upload Attachment
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="p-5 space-y-2">
-                {visibleAttachments.length === 0 && (
-                  <p className="text-sm" style={{ color: 'rgb(var(--text-muted))' }}>No attachments available.</p>
-                )}
-                {visibleAttachments.map(item => (
-                  <div key={item.id} className="rounded-lg px-3 py-2 flex items-center gap-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgb(var(--border-subtle))' }}>
-                    <Icon name="DocumentTextIcon" size={15} className="text-blue-400" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate" style={{ color: 'rgb(var(--text-primary))' }}>{item.fileName}</p>
-                      <p className="text-xs truncate" style={{ color: 'rgb(var(--text-muted))' }}>
-                        {item.uploadedBy} • {new Date(item.uploadedAt).toLocaleDateString()}{item.note ? ` • ${item.note}` : ''}
-                      </p>
-                    </div>
-                    <button 
-                      className="text-xs hover:underline" 
-                      style={{ color: 'rgb(79 127 255)' }} 
-                      onClick={() => {
-                        if (item.fileUrl && item.fileUrl !== '#') {
-                          window.open(item.fileUrl, '_blank');
-                        } else {
-                          toast.error('File link not available');
-                        }
-                      }}
-                    >
-                      View
-                    </button>
-                    {isHodView && (
-                      <button className="text-xs" style={{ color: 'rgb(248 113 113)' }} onClick={() => handleRemoveAttachment(item.id)}>
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

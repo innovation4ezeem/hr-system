@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (action === 'approve') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const resolvedActor = resolveActorForMutation(request, auth.role, actor);
       if (resolvedActor.response) return resolvedActor.response;
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (action === 'reject') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const resolvedActor = resolveActorForMutation(request, auth.role, actor);
       if (resolvedActor.response) return resolvedActor.response;
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (action === 'inquire') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const resolvedActor = resolveActorForMutation(request, auth.role, actor);
       if (resolvedActor.response) return resolvedActor.response;
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (action === 'respond-to-inquiry') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const requesterId = getRequestUserId(request);
       if (!requesterId) return NextResponse.json({ error: 'Missing user identity' }, { status: 401 });
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (action === 'cancel') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const resolvedActor = resolveActorForMutation(request, auth.role, actor);
       if (resolvedActor.response) return resolvedActor.response;

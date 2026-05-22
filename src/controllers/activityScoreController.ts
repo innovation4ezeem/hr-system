@@ -18,6 +18,7 @@ import { getPerformanceSheetController, savePerformanceSheetController } from '@
 import { getSystemSettings } from '@/models/systemSettingsModel';
 import { HRNotificationService } from '@/lib/notifications/hrNotificationService';
 import { insertSystemAuditLog } from '@/models/systemAuditLogModel';
+import { prisma } from '@/lib/prisma';
 
 type ActivityPayload = Partial<ActivityScoreRecord>;
 
@@ -199,8 +200,22 @@ export async function createActivityScoreController(payload: ActivityPayload) {
 
   await upsertActivityScore(record);
   
-  // Sync worksheet
-  await syncActivitiesIntoPerformanceSheet(record.year);
+  // Sync worksheet (INCREMENTAL)
+  try {
+    if (record.assignedToId && record.sourceFolder !== 'System') {
+      const sheet = await getPerformanceSheetController(parseYear(record.year), []);
+      if (sheet.cellsByEmployee[record.assignedToId]) {
+        const column = normalizeToColumn(record.month, sheet.columns);
+        const bucket = normalizeScoreBucket(record.scoreBucket, record.category);
+        const key = `${bucket}::${column}`;
+        sheet.cellsByEmployee[record.assignedToId][key] = (sheet.cellsByEmployee[record.assignedToId][key] || 0) + Number(record.score || 0);
+        await savePerformanceSheetController(parseYear(record.year), sheet);
+      }
+    }
+  } catch (e) {
+    console.error('Incremental sync failed, full sync:', e);
+    await syncActivitiesIntoPerformanceSheet(record.year);
+  }
 
   // Audit Log
   await insertSystemAuditLog('performance-score', 'create-activity', record.updatedBy || 'Admin', {
@@ -269,7 +284,6 @@ export async function createActivityScoresBatchController(payload: ActivityPaylo
   });
 
   // Batch Upsert
-  const { prisma } = await import('@/lib/prisma');
   
   for (const record of records) {
     await prisma.activity_score_entries.upsert({
@@ -315,8 +329,28 @@ export async function createActivityScoresBatchController(payload: ActivityPaylo
     });
   }
 
-  // Sync worksheet
-  await syncActivitiesIntoPerformanceSheet(year);
+  // Sync worksheet (INCREMENTAL BATCH)
+  try {
+    const sheet = await getPerformanceSheetController(parseYear(year), []);
+    let modified = false;
+    for (const record of records) {
+      if (record.assignedToId && record.sourceFolder !== 'System') {
+        if (sheet.cellsByEmployee[record.assignedToId]) {
+          const column = normalizeToColumn(record.month, sheet.columns);
+          const bucket = normalizeScoreBucket(record.scoreBucket, record.category);
+          const key = `${bucket}::${column}`;
+          sheet.cellsByEmployee[record.assignedToId][key] = (sheet.cellsByEmployee[record.assignedToId][key] || 0) + Number(record.score || 0);
+          modified = true;
+        }
+      }
+    }
+    if (modified) {
+      await savePerformanceSheetController(parseYear(year), sheet);
+    }
+  } catch (e) {
+    console.error('Batch incremental sync failed, full sync:', e);
+    await syncActivitiesIntoPerformanceSheet(year);
+  }
 
   // Audit Log & Notify in background
   Promise.all(records.map(async record => {
@@ -392,8 +426,42 @@ export async function updateActivityScoreController(id: string, payload: Activit
 
   await upsertActivityScore(record);
   
-  // Sync worksheet
-  await syncActivitiesIntoPerformanceSheet(record.year);
+  // Sync worksheet (INCREMENTAL UPDATE)
+  try {
+    const sheet = await getPerformanceSheetController(parseYear(record.year), []);
+    let modified = false;
+
+    // Deduct old
+    if (existing.assignedToId && existing.sourceFolder !== 'System') {
+      if (sheet.cellsByEmployee[existing.assignedToId]) {
+        const column = normalizeToColumn(existing.month, sheet.columns);
+        const bucket = normalizeScoreBucket(existing.scoreBucket, existing.category);
+        const key = `${bucket}::${column}`;
+        if (typeof sheet.cellsByEmployee[existing.assignedToId][key] === 'number') {
+          sheet.cellsByEmployee[existing.assignedToId][key] -= Number(existing.score || 0);
+          modified = true;
+        }
+      }
+    }
+
+    // Add new
+    if (record.assignedToId && record.sourceFolder !== 'System') {
+      if (sheet.cellsByEmployee[record.assignedToId]) {
+        const column = normalizeToColumn(record.month, sheet.columns);
+        const bucket = normalizeScoreBucket(record.scoreBucket, record.category);
+        const key = `${bucket}::${column}`;
+        sheet.cellsByEmployee[record.assignedToId][key] = (sheet.cellsByEmployee[record.assignedToId][key] || 0) + Number(record.score || 0);
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      await savePerformanceSheetController(parseYear(record.year), sheet);
+    }
+  } catch (e) {
+    console.error('Update incremental sync failed, full sync:', e);
+    await syncActivitiesIntoPerformanceSheet(record.year);
+  }
 
   // Audit Log with Diffs
   const diffs: Record<string, { from: any, to: any }> = {};
@@ -430,25 +498,77 @@ export async function updateActivityScoreController(id: string, payload: Activit
   return record;
 }
 
-export async function deleteActivityScoreController(id: string, year: number, actor = 'Admin') {
-  if (!id) throw new Error('Activity id is required');
-  
-  const existing = (await listActivityScores()).find(item => item.id === id);
-  
-  // 1. Delete the actual record first
-  await deleteActivityScore(id);
+export async function deleteActivityScoreController(idOrIds: string | string[], year: number, actor = 'Admin') {
+  const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+  if (ids.length === 0) return;
 
-  // 2. Syncing the worksheet
-  await syncActivitiesIntoPerformanceSheet(parseYear(year));
+  const existings = await prisma.activity_score_entries.findMany({
+    where: { id: { in: ids } }
+  });
 
-  // 3. Audit Log - also secondary
-  if (existing) {
+  if (existings.length === 0) return;
+
+  // Cleanup corresponding popularity_votes if any of the deleted items are Popularity votes
+  for (const existing of existings) {
+    if (existing.category === 'Popularity' && existing.activity_name.startsWith('Live Popularity Vote from ')) {
+      const voterName = existing.activity_name.replace('Live Popularity Vote from ', '').trim();
+      const monthStr = `${existing.month} ${existing.year}`;
+      const matchingVotes = await prisma.popularity_votes.findMany({
+        where: {
+          voter_name: voterName,
+          target_employee_id: existing.assigned_to_id,
+          month: monthStr
+        },
+        take: 1
+      });
+      if (matchingVotes.length > 0) {
+        await prisma.popularity_votes.delete({
+          where: { id: matchingVotes[0].id }
+        });
+      }
+    }
+  }
+
+  // 1. Delete the actual records
+  await prisma.activity_score_entries.deleteMany({
+    where: { id: { in: ids } }
+  });
+
+  // 2. Syncing the worksheet (INCREMENTAL)
+  try {
+    const sheet = await getPerformanceSheetController(parseYear(year), []);
+    let sheetModified = false;
+
+    for (const existing of existings) {
+      if (existing.assigned_to_id && existing.source_folder !== 'System') {
+        if (sheet.cellsByEmployee[existing.assigned_to_id]) {
+          const column = normalizeToColumn(existing.month, sheet.columns);
+          const bucket = normalizeScoreBucket(existing.score_bucket, existing.category);
+          const key = `${bucket}::${column}`;
+          if (typeof sheet.cellsByEmployee[existing.assigned_to_id][key] === 'number') {
+            sheet.cellsByEmployee[existing.assigned_to_id][key] -= Number(existing.score || 0);
+            sheetModified = true;
+          }
+        }
+      }
+    }
+
+    if (sheetModified) {
+      await savePerformanceSheetController(parseYear(year), sheet);
+    }
+  } catch (e) {
+    console.error('Incremental sync failed, falling back to full sync:', e);
+    await syncActivitiesIntoPerformanceSheet(parseYear(year));
+  }
+
+  // 3. Audit Logs
+  for (const existing of existings) {
     insertSystemAuditLog('performance-score', 'delete-activity', actor, {
       id: existing.id,
-      activityName: existing.activityName,
-      assignedToName: existing.assignedToName
+      activityName: existing.activity_name,
+      assignedToName: existing.assigned_to_name
     }).catch(auditError => {
-      console.error('[Delete] Background audit log failed:', auditError);
+      console.error('Failed to save audit log for delete activity:', auditError);
     });
   }
 }

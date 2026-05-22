@@ -52,7 +52,7 @@ export default function TeamHeatmap({
   periodType = 'yearly',
   periodNo = 1
 }: TeamHeatmapProps) {
-  const { selectedYear, userRole, userDepartment, buildAuthHeaders } = useAppContext();
+  const { selectedYear, userRole, userDepartment, buildAuthHeaders, userId } = useAppContext();
   const [filterDept, setFilterDept] = useState('All');
 
   const [filterRole, setFilterRole] = useState<'All' | 'Employee' | 'HOD'>('All');
@@ -124,9 +124,15 @@ export default function TeamHeatmap({
 
         const mapped: Employee[] = usersData.users
           .filter((u: any) => {
-            const isAdmin = u.role?.toLowerCase() === 'admin';
-            const isHod = u.role?.toLowerCase() === 'hod';
+            const uRole = u.role?.toLowerCase() || '';
+            const isAdmin = uRole === 'admin';
+            const isDirector = uRole === 'director';
+            const isHod = uRole === 'hod';
+            
             if (isAdmin) return false;
+            if (isDirector) return false;
+            if (u.id === userId) return false;
+            
             if (excludeHod && isHod) return false;
             if (userRole === 'hod') return u.dept === userDepartment;
             return true;

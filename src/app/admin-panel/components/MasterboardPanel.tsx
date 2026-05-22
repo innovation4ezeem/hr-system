@@ -250,10 +250,10 @@ export default function MasterboardPanel({
           perfBase: official.performance60 || 0,
           categoryScores: {
             ...emp.categoryScores,
-            Participation: official.participation25 || 0,
-            Popularity: official.popularity15 || 0
+            Participation: Math.max(official.participation25 || 0, emp.categoryScores['Participation'] || 0),
+            Popularity: Math.max(official.popularity15 || 0, emp.categoryScores['Popularity'] || 0)
           },
-          total: official.finalScore || round2((official.performance60 || 0) + (official.participation25 || 0) + (official.popularity15 || 0))
+          total: official.finalScore || round2((official.performance60 || 0) + Math.max(official.participation25 || 0, emp.categoryScores['Participation'] || 0) + Math.max(official.popularity15 || 0, emp.categoryScores['Popularity'] || 0))
         };
       }
       return emp;

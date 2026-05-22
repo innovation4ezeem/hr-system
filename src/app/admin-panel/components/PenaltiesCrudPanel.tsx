@@ -70,6 +70,7 @@ export default function PenaltiesCrudPanel({
   const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [showInactive, setShowInactive] = useState(false);
   const [activeTab, setActiveTab] = useState<'Standard' | 'Cash'>('Standard');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -259,13 +260,35 @@ export default function PenaltiesCrudPanel({
 
     try {
       setSaving(true);
-      const response = await fetch('/api/penalties', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({ ...newPenalty, year: Number(newPenalty.year || selectedYear) }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || 'Failed to create penalty');
+      
+      if (newPenalty.employeeName.startsWith('DEPT:')) {
+        const deptName = newPenalty.employeeName.slice(5);
+        const deptUsers = users.filter(u => u.dept === deptName && u.status !== 'inactive' && u.status !== 'terminated');
+        if (deptUsers.length === 0) {
+           toast.error('No valid employees found in this department');
+           return;
+        }
+        
+        await Promise.all(deptUsers.map(async user => {
+           const response = await fetch('/api/penalties', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json', ...authHeaders },
+             body: JSON.stringify({ ...newPenalty, employeeName: user.name, employeeId: user.id, dept: user.dept, year: Number(newPenalty.year || selectedYear) }),
+           });
+           if (!response.ok) {
+              const payload = await response.json().catch(() => ({}));
+              console.error(`Failed to create penalty for ${user.name}:`, payload?.error);
+           }
+        }));
+      } else {
+        const response = await fetch('/api/penalties', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ ...newPenalty, year: Number(newPenalty.year || selectedYear) }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error || 'Failed to create penalty');
+      }
 
       await loadPenalties();
       setShowAddForm(false);
@@ -275,7 +298,7 @@ export default function PenaltiesCrudPanel({
         dept: 'Operations',
         cashAmount: 0,
       });
-      toast.success('Penalty history record created');
+      toast.success(newPenalty.employeeName.startsWith('DEPT:') ? 'Department-wide penalties created' : 'Penalty history record created');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create penalty');
     } finally {
@@ -311,20 +334,21 @@ export default function PenaltiesCrudPanel({
 
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
-  const handleDeleteAllFiltered = async () => {
-    if (displayRecords.length === 0) return;
+  const handleDeleteSelected = async () => {
+    if (selectedRecordIds.length === 0) return;
     setSaving(true);
     try {
-      for (const record of displayRecords) {
-        await fetch(`/api/penalties?id=${encodeURIComponent(record.id)}`, {
+      for (const id of selectedRecordIds) {
+        await fetch(`/api/penalties?id=${encodeURIComponent(id)}`, {
           method: 'DELETE',
           headers: authHeaders
         });
       }
-      toast.success(`Deleted ${displayRecords.length} records`);
+      toast.success(`Deleted ${selectedRecordIds.length} records`);
+      setSelectedRecordIds([]);
       await loadPenalties();
     } catch (err) {
-      toast.error('Failed to delete all records');
+      toast.error('Failed to delete selected records');
     } finally {
       setSaving(false);
       setShowDeleteAllConfirm(false);
@@ -471,7 +495,22 @@ export default function PenaltiesCrudPanel({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Saving progress overlay */}
+      {saving && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
+            <div className="relative">
+              <div className="w-14 h-14 rounded-full border-4 border-blue-500/20" />
+              <div className="absolute inset-0 w-14 h-14 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>Saving Changes...</p>
+              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-muted))' }}>Please wait while we update the records</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="rounded-xl p-4" style={{ background: 'rgba(248, 113, 113, 0.08)', border: '1px solid rgba(248, 113, 113, 0.3)' }}>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
@@ -481,20 +520,21 @@ export default function PenaltiesCrudPanel({
             </p> */}
           </div>
           <div className="flex items-center gap-3">
-            {showAddButton && (userRole === 'admin' || (userRole === 'hod' && !externalEmployeeId)) && (
+            {showAddButton && (userRole === 'admin' || userRole === 'director' || (userRole === 'hod' && !externalEmployeeId)) && (
               <button className="btn-primary" onClick={() => setShowAddForm(!showAddForm)}>
                 <Icon name="PlusIcon" size={14} className="inline mr-1" />
                 New History Record
               </button>
             )}
-            {canDelete && (userRole === 'admin' || userRole === 'hod') && !embedded && displayRecords.length > 0 && (
+            {canDelete && (userRole === 'admin' || userRole === 'director' || userRole === 'hod') && !embedded && displayRecords.length > 0 && (
               <button
                 onClick={() => setShowDeleteAllConfirm(true)}
-                className="px-3 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white text-xs font-bold transition-all flex items-center gap-2 border border-red-500/30"
-                title="Delete all items currently shown in the table (filtered)"
+                disabled={selectedRecordIds.length === 0}
+                className="px-3 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white text-xs font-bold transition-all flex items-center gap-2 border border-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Delete selected records"
               >
                 <Icon name="TrashIcon" size={14} />
-                Delete All Filtered
+                Delete Selected
               </button>
             )}
           </div>
@@ -511,21 +551,40 @@ export default function PenaltiesCrudPanel({
                 className="input-base text-sm"
                 value={newPenalty.employeeName || ''}
                 onChange={e => {
-                  const selected = users.find(user => user.name === e.target.value);
-                  setNewPenalty(prev => ({
-                    ...prev,
-                    employeeName: e.target.value,
-                    employeeId: selected?.id,
-                    dept: selected?.dept || 'Operations'
-                  }));
+                  const val = e.target.value;
+                  if (val.startsWith('DEPT:')) {
+                     setNewPenalty(prev => ({
+                        ...prev,
+                        employeeName: val,
+                        employeeId: '',
+                        dept: val.slice(5)
+                     }));
+                  } else {
+                    const selected = users.find(user => user.name === val);
+                    setNewPenalty(prev => ({
+                      ...prev,
+                      employeeName: val,
+                      employeeId: selected?.id,
+                      dept: selected?.dept || 'Operations'
+                    }));
+                  }
                 }}
               >
                 <option value="">Select Employee *</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.name}>
-                    {user.name}
-                  </option>
-                ))}
+                <optgroup label="Departments">
+                  {Array.from(new Set(users.map(u => u.dept))).map(dept => (
+                    <option key={`DEPT:${dept}`} value={`DEPT:${dept}`}>
+                      [All of {dept}]
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Employees">
+                  {users.map(user => (
+                    <option key={user.id} value={user.name}>
+                      {user.name}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
             <div className="space-y-1">
@@ -604,8 +663,11 @@ export default function PenaltiesCrudPanel({
             </div>
           </div>
           <div className="flex gap-2 mt-3">
-            <button className="btn-primary" onClick={createPenalty}>Save Record</button>
-            <button className="btn-ghost" onClick={() => setShowAddForm(false)}>Cancel</button>
+            <button className="btn-primary flex items-center gap-2" onClick={createPenalty} disabled={saving}>
+              {saving && <Icon name="ArrowPathIcon" size={14} className="animate-spin" />}
+              {saving ? 'Saving...' : 'Save Record'}
+            </button>
+            <button className="btn-ghost" onClick={() => setShowAddForm(false)} disabled={saving}>Cancel</button>
           </div>
         </div>
       )}
@@ -643,7 +705,7 @@ export default function PenaltiesCrudPanel({
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
-              {(userRole === 'admin' || userRole === 'hod') && !embedded && !externalEmployeeId && (
+              {(userRole === 'admin' || userRole === 'director' || userRole === 'hod') && !embedded && !externalEmployeeId && (
                 <label className="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer hover:bg-white/5 transition-all whitespace-nowrap"
                   style={{ borderColor: showInactive ? 'rgb(var(--text-primary))' : 'rgb(var(--border-subtle))' }}>
                   <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} className="rounded" />
@@ -678,6 +740,19 @@ export default function PenaltiesCrudPanel({
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: 'rgb(var(--bg-elevated))', borderBottom: '1px solid rgb(var(--border-subtle))' }}>
+              {canDelete && (
+                <th className="px-3 py-3 w-8 text-center text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={displayRecords.length > 0 && selectedRecordIds.length === displayRecords.length}
+                    onChange={e => {
+                      if (e.target.checked) setSelectedRecordIds(displayRecords.map(r => r.id));
+                      else setSelectedRecordIds([]);
+                    }}
+                  />
+                </th>
+              )}
               <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Employee</th>
               <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Date</th>
               <th className="px-3 py-3 text-left text-xs font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Mistake</th>
@@ -691,7 +766,7 @@ export default function PenaltiesCrudPanel({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={(activeTab === 'Cash' ? 5 : 4) + (canEdit || canDelete ? 1 : 0)} className="px-4 py-12 text-center">
+                <td colSpan={(activeTab === 'Cash' ? 5 : 4) + (canEdit || canDelete ? 1 : 0) + (canDelete ? 1 : 0)} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-4">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
                     <p className="text-sm font-medium animate-pulse" style={{ color: 'rgb(var(--text-muted))' }}>Loading penalties records...</p>
@@ -700,13 +775,26 @@ export default function PenaltiesCrudPanel({
               </tr>
             ) : displayRecords.length === 0 ? (
               <tr>
-                <td colSpan={(activeTab === 'Cash' ? 5 : 4) + (canEdit || canDelete ? 1 : 0)} className="px-4 py-6 text-center text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
+                <td colSpan={(activeTab === 'Cash' ? 5 : 4) + (canEdit || canDelete ? 1 : 0) + (canDelete ? 1 : 0)} className="px-4 py-6 text-center text-xs" style={{ color: 'rgb(var(--text-muted))' }}>
                   No {activeTab.toLowerCase()} records found
                 </td>
               </tr>
             ) : (
               displayRecords.map(record => (
                 <tr key={record.id} style={{ borderBottom: '1px solid rgb(var(--border))' }}>
+                  {canDelete && (
+                    <td className="px-3 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        checked={selectedRecordIds.includes(record.id)}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedRecordIds(prev => [...prev, record.id]);
+                          else setSelectedRecordIds(prev => prev.filter(id => id !== record.id));
+                        }}
+                      />
+                    </td>
+                  )}
                   <td className="px-3 py-3">
                         <InlineEditableField
                           type="select"
@@ -816,11 +904,11 @@ export default function PenaltiesCrudPanel({
       />
       <ConfirmModal
         open={showDeleteAllConfirm}
-        title="Delete All Filtered Records"
-        message={`This will permanently delete ALL ${displayRecords.length} records currently shown in the table based on your filters. This action cannot be undone. Continue?`}
-        confirmLabel={`Delete ${displayRecords.length} Records`}
+        title="Delete Selected Records"
+        message={`Are you sure you want to delete ${selectedRecordIds.length} selected records? This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedRecordIds.length} Records`}
         variant="danger"
-        onConfirm={handleDeleteAllFiltered}
+        onConfirm={handleDeleteSelected}
         onCancel={() => setShowDeleteAllConfirm(false)}
       />
     </div>

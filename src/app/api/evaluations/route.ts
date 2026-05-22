@@ -13,6 +13,7 @@ import {
 import { listUsers, getUser } from '@/models/userModel';
 import { prisma } from '@/lib/prisma';
 import { upsertActivityScore, deleteActivityScore } from '@/models/activityScoreModel';
+import { syncActivitiesIntoPerformanceSheet } from '@/controllers/activityScoreController';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     const defaultPeriodLabel = `Q${currentQuarter} ${new Date().getFullYear()}`;
     const periodLabel = searchParams.get('periodLabel') || defaultPeriodLabel;
 
-    const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+    const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
     if (auth.response) return auth.response;
 
     const requesterId = getRequestUserId(request);
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'employees') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       
       const dept = getRequestDepartment(request);
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
-    const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+    const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
     if (auth.response) return auth.response;
 
     const requesterId = getRequestUserId(request);
@@ -218,6 +219,8 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+      
+      await syncActivitiesIntoPerformanceSheet(new Date().getFullYear());
 
       return NextResponse.json({ success: true });
     }
@@ -236,11 +239,77 @@ export async function POST(request: NextRequest) {
         reflection: reflection || '',
         hodComment: hodComment || '',
       });
+
+      // Auto-count PLGT Learn (Section 6) and PLGT PLAY (Section 7)
+      try {
+        if (reflection) {
+          const parsed = JSON.parse(reflection);
+          const employeeProfile = await getUser(employeeId);
+          const employeeName = employeeProfile?.name || employeeId;
+          const date = new Date().toISOString().split('T')[0];
+          const year = new Date().getFullYear();
+          const monthName = new Date().toLocaleString('en-US', { month: 'long' });
+          const safePeriod = (periodLabel || '').replace(/\s+/g, '_');
+
+          // Section 6: Attended Course -> LEARN Attendance
+          const learnRecordId = `EVAL-LEARN-${employeeId}-${safePeriod}`;
+          if (parsed.attendedCourse && parsed.attendedCourse.trim() !== '') {
+            await upsertActivityScore({
+              id: learnRecordId,
+              activityName: 'LEARN Attendance',
+              date,
+              year,
+              month: monthName,
+              category: 'Participation',
+              scoreBucket: 'LEARN Attendance',
+              score: 10,
+              sourceFolder: 'Self Evaluation',
+              description: `Course: ${parsed.attendedCourse}`,
+              assignedToId: employeeId,
+              assignedToName: employeeName,
+              attachmentName: parsed.courseCertName || '',
+              attachmentUrl: parsed.courseCertUrl || '',
+              updatedBy: 'System Auto-count',
+            });
+          } else {
+            await prisma.activity_score_entries.deleteMany({ where: { id: learnRecordId } });
+          }
+
+          // Section 7: PLGT Play -> PLAY Attendance
+          const playRecordId = `EVAL-PLAY-${employeeId}-${safePeriod}`;
+          if (parsed.plgtPlay && parsed.plgtPlay.trim() !== '') {
+            await upsertActivityScore({
+              id: playRecordId,
+              activityName: 'PLAY Attendance',
+              date,
+              year,
+              month: monthName,
+              category: 'Participation',
+              scoreBucket: 'PLAY Attendance',
+              score: 10,
+              sourceFolder: 'Self Evaluation',
+              description: `Event: ${parsed.plgtPlay}`,
+              assignedToId: employeeId,
+              assignedToName: employeeName,
+              attachmentName: parsed.plgtPlayPhotoName || '',
+              attachmentUrl: parsed.plgtPlayPhotoUrl || '',
+              updatedBy: 'System Auto-count',
+            });
+          } else {
+            await prisma.activity_score_entries.deleteMany({ where: { id: playRecordId } });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to auto-count PLGT Learn/Play:', err);
+      }
+      
+      await syncActivitiesIntoPerformanceSheet(new Date().getFullYear());
+
       return NextResponse.json({ evaluation: result });
     }
 
     if (action === 'create-attachment') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const { employeeId, fileName, fileUrl, note } = body;
@@ -255,7 +324,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'delete-attachment') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const { id } = body;
@@ -309,7 +378,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'update-general-settings') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const {

@@ -23,6 +23,7 @@ const PersonalPerformanceHeatmapCard = dynamic(() => import('@/app/employee-port
 const PersonalLeaveStatusPanel = dynamic(() => import('@/app/employee-portal/components/PersonalLeaveStatusPanel'), { ssr: false });
 const ProfileEditForm = dynamic(() => import('@/app/employee-portal/components/ProfileEditForm'), { ssr: false });
 const EmployeeLeaveHistoryPanel = dynamic(() => import('@/app/employee-portal/components/EmployeeLeaveHistoryPanel'), { ssr: false });
+const LivePopularityDashboard = dynamic(() => import('@/app/employee-portal/components/LivePopularityDashboard'), { ssr: false });
 
 type ActiveTab = 'overview' | 'activities' | 'leave' | 'evaluation' | 'penalties';
 
@@ -270,6 +271,10 @@ export default function PersonalPortalClient({ basePath }: PersonalPortalClientP
                         onViewFullHistory={() => handleTabChange('leave')}
                       />
                     </div>
+                  </div>
+
+                  <div className="pt-4">
+                    <LivePopularityDashboard />
                   </div>
 
                   <div className="pt-4">

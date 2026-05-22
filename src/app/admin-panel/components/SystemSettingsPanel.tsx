@@ -548,8 +548,8 @@ export default function SystemSettingsPanel() {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600 font-bold text-xs">1</div>
               <div>
-                <p className="text-xs font-bold text-blue-600">Dec 31 Snapshot</p>
-                <p className="text-[9px] font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Permanent Archive</p>
+                <p className="text-xs font-bold text-blue-500 dark:text-blue-400">Dec 31 Snapshot</p>
+                <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">Permanent Archive</p>
               </div>
             </div>
             <div className="flex-1 space-y-3">
@@ -605,8 +605,8 @@ export default function SystemSettingsPanel() {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-600 font-bold text-xs">2</div>
               <div>
-                <p className="text-xs font-bold text-amber-600">Jan 1 Reset</p>
-                <p className="text-[9px] font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Quota Refresh</p>
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-500">Jan 1 Reset</p>
+                <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">Quota Refresh</p>
               </div>
             </div>
             <div className="flex-1 space-y-3">
@@ -630,8 +630,8 @@ export default function SystemSettingsPanel() {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-600 font-bold text-xs">3</div>
               <div>
-                <p className="text-xs font-bold text-purple-600">Feb/Mar Cleanse</p>
-                <p className="text-[9px] font-semibold" style={{ color: 'rgb(var(--text-muted))' }}>Carry-Forward Cap</p>
+                <p className="text-xs font-bold text-purple-600 dark:text-purple-400">Feb/Mar Cleanse</p>
+                <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">Carry-Forward Cap</p>
               </div>
             </div>
             <div className="flex-1 space-y-3">
@@ -708,13 +708,13 @@ export default function SystemSettingsPanel() {
         </div>
         <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
           {auditLogs.map(log => (
-            <div key={log.logId} className="group rounded-lg px-3 py-2 text-xs flex items-center justify-between hover:bg-gray-50 transition-colors border border-gray-100">
+            <div key={log.logId} className="group rounded-lg px-3 py-2 text-xs flex items-center justify-between hover:bg-white/5 transition-colors border border-gray-200 dark:border-white/10">
               <div className="flex items-center gap-3 overflow-hidden">
-                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: log.eventType === 'penalty-record' ? 'rgb(220 38 38)' : 'rgb(37 99 235)' }} />
-                <span className="truncate max-w-[400px] text-gray-700">{log.eventType} | {log.action} | {decodeURIComponent(log.actor || '')}</span>
+                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: log.eventType === 'penalty-record' ? 'rgb(220 38 38)' : 'rgb(59 130 246)' }} />
+                <span className="truncate max-w-[400px] text-gray-800 dark:text-gray-200">{log.eventType} | {log.action} | {decodeURIComponent(log.actor || '')}</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-gray-500">{new Date(log.createdAt).toLocaleString('en-GB')}</span>
+                <span className="text-gray-500 dark:text-gray-400">{new Date(log.createdAt).toLocaleString('en-GB')}</span>
                 <button
                   onClick={() => handleDeleteLog(log.logId)}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 text-red-500 transition-all"

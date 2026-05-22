@@ -103,7 +103,7 @@ function mapRequest(request: TeamHistoryLeaveRequest): LeaveRequest {
 export default function LeaveRequestsPanel({ compact = false, departmentScope = null, canManage = true }: LeaveRequestsPanelProps) {
   const { selectedYear, userRole } = useAppContext();
   
-  if (userRole !== 'admin' && userRole !== 'hod') {
+  if (userRole !== 'admin' && userRole !== 'hod' && userRole !== 'director') {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed rounded-xl" style={{ borderColor: 'rgb(var(--border-subtle))' }}>
         <Icon name="ShieldExclamationIcon" size={32} className="text-red-500/50 mb-2" />

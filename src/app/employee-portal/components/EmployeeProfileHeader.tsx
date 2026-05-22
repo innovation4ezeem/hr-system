@@ -16,7 +16,7 @@ export default function EmployeeProfileHeader({ externalData }: { externalData?:
   const employee = {
     name: decodedName,
     id: externalData?.id || userId || 'ID-PENDING', 
-    role: externalData?.role || (userRole === 'hod' ? 'Head of Operations' : userRole === 'admin' ? 'System Admin' : 'Employee'),
+    role: externalData?.role || (userRole === 'hod' ? `Head of ${userDepartment || 'Department'}` : userRole === 'admin' ? 'System Admin' : 'Employee'),
     dept: externalData?.dept || userDepartment || 'Operations',
     joinDate: externalData?.joinDate || 'TBD',
     yearsService: externalData?.yearsService || 0,

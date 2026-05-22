@@ -4,7 +4,7 @@ import { changeUserPasswordController } from '@/controllers/authController';
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+    const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
     if (auth.response) return auth.response;
 
     const body = await request.json();

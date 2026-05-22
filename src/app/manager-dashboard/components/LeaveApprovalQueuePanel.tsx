@@ -56,7 +56,7 @@ type ModalMode = 'reject' | null;
 export default function LeaveApprovalQueuePanel() {
   const { userRole } = useAppContext();
   
-  if (userRole !== 'admin' && userRole !== 'hod') {
+  if (userRole !== 'admin' && userRole !== 'hod' && userRole !== 'director') {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Icon name="ShieldExclamationIcon" size={48} className="text-red-500/50 mb-4" />

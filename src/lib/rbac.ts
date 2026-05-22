@@ -1,4 +1,4 @@
-export type AppRole = 'admin' | 'hod' | 'employee' | 'intern' | 'probation';
+export type AppRole = 'admin' | 'hod' | 'director' | 'employee' | 'intern' | 'probation';
 
 export type AppFeature =
   | 'user_management'
@@ -35,6 +35,15 @@ export const FEATURE_ACCESS: Record<AppRole, Record<AppFeature, FeaturePermissio
     data_visibility: { view: 'department', edit: 'none' },
     archives: { view: 'department', edit: 'none' },
   },
+  director: {
+    user_management: { view: 'company', edit: 'none' },
+    scoring_engine: { view: 'company', edit: 'none' },
+    task_assignment: { view: 'company', edit: 'department' },
+    penalty_logs: { view: 'company', edit: 'department' },
+    leave_system: { view: 'company', edit: 'department' },
+    data_visibility: { view: 'company', edit: 'none' },
+    archives: { view: 'company', edit: 'none' },
+  },
   employee: {
     user_management: { view: 'none', edit: 'none' },
     scoring_engine: { view: 'none', edit: 'none' },
@@ -66,8 +75,8 @@ export const FEATURE_ACCESS: Record<AppRole, Record<AppFeature, FeaturePermissio
 
 export const ROUTE_ACCESS: Record<string, AppRole[]> = {
   '/admin-panel': ['admin'],
-  '/manager-dashboard': ['admin', 'hod'],
-  '/employee-portal': ['admin', 'hod', 'employee', 'intern', 'probation'],
+  '/manager-dashboard': ['admin', 'hod', 'director'],
+  '/employee-portal': ['admin', 'hod', 'director', 'employee', 'intern', 'probation'],
 };
 
 export function canAccessRoute(role: AppRole | null | undefined, pathname: string) {
@@ -81,12 +90,12 @@ export function canAccessRoute(role: AppRole | null | undefined, pathname: strin
 
 export function getDefaultRouteByRole(role: AppRole) {
   if (role === 'admin') return '/admin-panel';
-  if (role === 'hod') return '/manager-dashboard';
+  if (role === 'hod' || role === 'director') return '/manager-dashboard';
   return '/employee-portal';
 }
 
 export function getDepartmentFilter(role: AppRole, department: string | null | undefined) {
-  if (role === 'admin') return null;
+  if (role === 'admin' || role === 'director') return null;
   return department ?? null;
 }
 

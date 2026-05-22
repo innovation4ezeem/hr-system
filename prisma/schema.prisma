@@ -625,6 +625,7 @@ enum users_role {
   employee
   intern
   probation
+  director
 }
 
 enum leave_approvals_action {
@@ -683,4 +684,20 @@ enum performance_scores_status {
   calculated
   approved
   overridden
+}
+
+model popularity_votes {
+  id                    String    @id @db.VarChar(100)
+  voter_id              String    @db.VarChar(100)
+  voter_name            String    @db.VarChar(255)
+  voter_role            String    @db.VarChar(50)
+  target_employee_id    String    @db.VarChar(100)
+  target_employee_name  String    @db.VarChar(255)
+  points                Int       @default(0)
+  month                 String    @db.VarChar(50)
+  created_at            DateTime? @default(now()) @db.DateTime(0)
+
+  @@index([voter_id], map: "idx_pop_votes_voter")
+  @@index([target_employee_id], map: "idx_pop_votes_target")
+  @@index([month], map: "idx_pop_votes_month")
 }

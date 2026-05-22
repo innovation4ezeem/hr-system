@@ -14,7 +14,7 @@ function getId(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = requireRole(request, ['hod', 'admin']);
+    const auth = requireRole(request, ['director', 'hod', 'admin']);
     if (auth.response) return auth.response;
 
     const users = await getUsersController();
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const actor = getRequestUserId(request) || auth.role || 'system';
     const silentMode = request.headers.get('x-silent-mode') === 'true';
     
-    const user = await createUserController({ ...(body || {}), sendNotification: silentMode ? false : body?.sendNotification }, actor);
+    const user = await createUserController({ ...(body || {}), sendNotification: silentMode ? false : body?.sendNotification, internDurationMonths: body?.internDurationMonths }, actor);
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

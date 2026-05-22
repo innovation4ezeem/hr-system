@@ -5,7 +5,7 @@ export type UserRecord = {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'hod' | 'employee' | 'intern' | 'probation';
+  role: 'admin' | 'hod' | 'employee' | 'intern' | 'probation' | 'director';
   phoneNumber?: string | null;
   dept: string;
   status: 'active' | 'inactive' | 'pending' | 'terminated';
@@ -31,7 +31,7 @@ function normalizeUserRow(row: any): UserRecord {
     id: String(row?.id || '').trim(),
     name: String(row?.name || '').trim(),
     email: String(row?.email || '').trim(),
-    role: ['admin', 'hod', 'intern', 'probation'].includes(role) ? role as UserRecord['role'] : 'employee',
+    role: ['admin', 'hod', 'intern', 'probation', 'director'].includes(role) ? role as UserRecord['role'] : 'employee',
     phoneNumber: row?.phone ?? row?.phone_number ?? row?.phoneNumber ?? null,
     dept: String(row?.dept || 'Operations').trim() || 'Operations',
     status: ['inactive', 'pending', 'terminated'].includes(status) ? status as UserRecord['status'] : 'active',
@@ -59,7 +59,7 @@ export async function listUsers(): Promise<UserRecord[]> {
 }
 
 export async function upsertUser(user: UserRecord) {
-  const roleValue = (['admin', 'hod', 'employee', 'intern', 'probation'].includes(user.role) 
+  const roleValue = (['admin', 'hod', 'employee', 'intern', 'probation', 'director'].includes(user.role) 
     ? user.role 
     : 'employee') as users_role;
     

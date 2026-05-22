@@ -16,6 +16,7 @@ export default function EmployeePerformanceReadonlyTable({
 }) {
   const { selectedYear, userRole, userId: requesterId, userName, userDepartment } = useAppContext();
   const [activities, setActivities] = useState<any>({});
+  const [sheetSections, setSheetSections] = useState<Array<{ title: string; rows: Array<{ label: string }> }> | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [hasData, setHasData] = useState(false);
@@ -41,6 +42,12 @@ export default function EmployeePerformanceReadonlyTable({
         headers: authHeaders
       });
       const data = await res.json().catch(() => ({}));
+
+      // Store the actual sections from the sheet so we render all rows (not just hardcoded ones)
+      if (data.sections && Array.isArray(data.sections) && data.sections.length > 0) {
+        setSheetSections(data.sections);
+      }
+
       if (data.cellsByEmployee && data.cellsByEmployee[userId]) {
         const cells = data.cellsByEmployee[userId];
         // Check if there is any non-zero value (real data)
@@ -64,15 +71,20 @@ export default function EmployeePerformanceReadonlyTable({
     fetchWorksheet(false);
   }, [fetchWorksheet]);
 
-  const handleManualSync = async () => {
-    setSyncing(true);
-    await fetchWorksheet(true);
-  };
+
 
   const months = PERFORMANCE_MONTHS;
 
   const sections = useMemo(() => {
-    const template: ScoreSection[] = JSON.parse(JSON.stringify(baseSections));
+    // Use actual sections from the performance sheet if available, otherwise fall back to baseSections
+    const templateSource = sheetSections && sheetSections.length > 0
+      ? sheetSections.map(s => ({
+          title: s.title,
+          rows: s.rows.map(r => ({ label: r.label, monthly: new Array(12).fill(0) })),
+        }))
+      : JSON.parse(JSON.stringify(baseSections));
+
+    const template: ScoreSection[] = templateSource;
 
     if (activities && typeof activities === 'object' && !Array.isArray(activities)) {
       const cellMap = activities as Record<string, number>;
@@ -89,7 +101,7 @@ export default function EmployeePerformanceReadonlyTable({
     }
 
     return template;
-  }, [activities]);
+  }, [activities, sheetSections]);
 
   const monthTotals = months.map((_, monthIdx) =>
     sum(sections.flatMap(section => section.rows.map(row => row.monthly[monthIdx] || 0))),
@@ -127,23 +139,6 @@ export default function EmployeePerformanceReadonlyTable({
             ))}
           </select>
 
-          {/* Sync button */}
-          <button
-            onClick={handleManualSync}
-            disabled={syncing || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-            style={{
-              background: 'rgba(79,127,255,0.12)',
-              border: '1px solid rgba(79,127,255,0.3)',
-              color: 'rgb(79 127 255)',
-            }}
-            title="Sync latest scores from activity data"
-          >
-            <svg className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {syncing ? 'Syncing...' : 'Sync'}
-          </button>
         </div>
       </div>
 
@@ -152,7 +147,7 @@ export default function EmployeePerformanceReadonlyTable({
           <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          No performance scores found for <strong className="mx-1">{viewYear}</strong>. Scores are recorded via the Performance Scoring panel. Click <strong className="mx-1">Sync</strong> to recalculate from the latest activities.
+          No performance scores found for <strong className="mx-1">{viewYear}</strong>. Scores are automatically tracked as activities are logged.
         </div>
       )}
 

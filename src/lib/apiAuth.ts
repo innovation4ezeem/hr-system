@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
 
-export type ApiRole = 'admin' | 'hod' | 'employee' | 'intern' | 'probation';
+export type ApiRole = 'admin' | 'hod' | 'director' | 'employee' | 'intern' | 'probation';
 
-const VALID_ROLES: ApiRole[] = ['admin', 'hod', 'employee', 'intern', 'probation'];
+const VALID_ROLES: ApiRole[] = ['admin', 'hod', 'director', 'employee', 'intern', 'probation'];
 
 function readIdentity(request: NextRequest, headers: string[], cookies: string[]) {
   for (const key of headers) {

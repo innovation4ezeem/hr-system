@@ -12,6 +12,7 @@ const TeamHeatmap = dynamic(() => import('./TeamHeatmap'), { ssr: false });
 const PenaltiesCrudPanel = dynamic(() => import('@/app/admin-panel/components/PenaltiesCrudPanel'), { ssr: false });
 const LeaveRequestsPanel = dynamic(() => import('./LeavesRequestsPanel'), { ssr: false });
 const ProfileDetailModal = dynamic(() => import('@/components/ui/ProfileDetailModal'), { ssr: false });
+const LivePopularityDashboard = dynamic(() => import('@/app/employee-portal/components/LivePopularityDashboard'), { ssr: false });
 
 type ActiveTab = 'overview' | 'penalty' | 'leave';
 
@@ -54,13 +55,13 @@ export default function ManagerDashboardClient() {
   const [activeTab, setActiveTab] = useState<ActiveTab>(pathTab || tabParam || 'overview');
   const [showProfile, setShowProfile] = useState(viewParam === 'profile');
 
-  if (userRole !== 'admin' && userRole !== 'hod') {
+  if (userRole !== 'admin' && userRole !== 'hod' && userRole !== 'director') {
     return (
       <div className="flex-1 grid place-items-center px-6 py-10">
         <div className="max-w-xl rounded-2xl p-6 text-center" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
           <h3 className="text-lg font-semibold" style={{ color: 'rgb(248 113 113)' }}>Access Restricted</h3>
           <p className="text-sm mt-2" style={{ color: 'rgb(var(--text-secondary))' }}>
-            Manager cockpit is available for Admin and HOD roles only.
+            Manager cockpit is available for Admin, Director, and HOD roles only.
           </p>
         </div>
       </div>
@@ -98,9 +99,13 @@ export default function ManagerDashboardClient() {
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-fade-in">
             <KpiSummaryCards departmentScope={departmentScope} />
+
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2">
-                <TeamHeatmap compact departmentScope={departmentScope} thresholds={thresholds} excludeHod />
+              <div className="xl:col-span-2 space-y-6">
+                <TeamHeatmap departmentScope={departmentScope} />
+                <LivePopularityDashboard />
+              </div>
+              <div className="xl:col-span-1 space-y-6">
               </div>
               <div>
                 <LeaveRequestsPanel compact departmentScope={departmentScope} canManage={canManageLeave} />

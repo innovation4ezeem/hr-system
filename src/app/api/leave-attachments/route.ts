@@ -12,7 +12,7 @@ function sanitizeFileName(name: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireRole(request, ['employee', 'hod', 'admin']);
+    const auth = requireRole(request, ['employee', 'director', 'hod', 'admin']);
     if (auth.response) return auth.response;
 
     const formData = await request.formData();

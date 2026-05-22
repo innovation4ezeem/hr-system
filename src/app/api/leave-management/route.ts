@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'leave-types') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const includeInactive = searchParams.get('includeInactive') === '1';
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'eligible-types') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = eligibleLeaveTypesQuerySchema.safeParse(toObject(searchParams));
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'balances') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = balancesQuerySchema.safeParse(toObject(searchParams));
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'batch-balances') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const year = Number(searchParams.get('year') || new Date().getFullYear());
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'workflows') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const workflows = await listWorkflowConfigs();
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'holidays') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const yearParam = searchParams.get('year');
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'calendar') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = calendarQuerySchema.safeParse(toObject(searchParams));
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'reports') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = reportQuerySchema.safeParse({
@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'statuses') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       
       const statuses = await listLeaveRequestStatuses();

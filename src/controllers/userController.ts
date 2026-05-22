@@ -12,7 +12,7 @@ const fallbackUsers: UserRecord[] = [];
 
 function normalizeRole(value: string): UserRecord['role'] {
   const v = value.toLowerCase();
-  if (['admin', 'hod', 'intern', 'probation'].includes(v)) return v as any;
+  if (['admin', 'hod', 'director', 'intern', 'probation'].includes(v)) return v as any;
   return 'employee';
 }
 
@@ -73,7 +73,7 @@ export async function getUsersController() {
   return listUsers();
 }
 
-export async function createUserController(payload: Partial<UserRecord> & { sendNotification?: boolean }, actor = 'system') {
+export async function createUserController(payload: Partial<UserRecord> & { sendNotification?: boolean, internDurationMonths?: number }, actor = 'system') {
   const users = await listUsers();
 
   const record: UserRecord = {
@@ -156,8 +156,19 @@ export async function createUserController(payload: Partial<UserRecord> & { send
 
   // 1. Initialize leave balances for the current year automatically based on role/tenure
   try {
-    const { ensureBalancesForEmployee } = await import('@/models/leaveManagementModel');
+    const { ensureBalancesForEmployee, upsertLeaveEntitlementOverride } = await import('@/models/leaveManagementModel');
     const currentYear = new Date().getFullYear();
+
+    if (record.role === 'intern' && payload.internDurationMonths) {
+      await upsertLeaveEntitlementOverride({
+        employeeId: record.id,
+        leaveTypeCode: 'WFH',
+        year: currentYear,
+        overrideDays: Number(payload.internDurationMonths) * 2,
+        overrideReason: 'Intern Duration'
+      });
+    }
+
     await ensureBalancesForEmployee(record.id, currentYear);
     console.log(`Initialized leave balances for new user: ${record.name} (${record.id})`);
   } catch (err) {

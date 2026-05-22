@@ -106,7 +106,23 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const year = parseYear(searchParams.get('year'));
     const actor = request.headers.get('x-user-name') || 'Admin';
-    await deleteActivityScoreController(id, year, actor);
+
+    let ids: string[] = [];
+    if (id) ids.push(id);
+
+    try {
+      const clone = request.clone();
+      const body = await clone.json();
+      if (Array.isArray(body?.ids)) {
+        ids = body.ids;
+      }
+    } catch (e) {}
+
+    if (ids.length === 0) {
+      return NextResponse.json({ error: 'No IDs provided' }, { status: 400 });
+    }
+
+    await deleteActivityScoreController(ids, year, actor);
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

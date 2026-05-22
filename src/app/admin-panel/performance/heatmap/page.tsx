@@ -4,6 +4,7 @@ import AppLayout from '@/components/AppLayout';
 import Topbar from '@/components/Topbar';
 import TeamHeatmap from '@/app/manager-dashboard/components/TeamHeatmap';
 import MasterboardPanel from '@/app/admin-panel/components/MasterboardPanel';
+import LivePopularityDashboard from '@/app/employee-portal/components/LivePopularityDashboard';
 import ScoringFormulaCard from '@/app/admin-panel/components/ScoringFormulaCard';
 import Icon from '@/components/ui/AppIcon';
 import { useAppContext } from '@/context/AppContext';
@@ -188,6 +189,10 @@ export default function AdminPerformanceHeatmapPage() {
                   <option>Innovative & Creativity</option>
                   <option>Collaboration (Effective Collaborator)</option>
                   <option>Initiative</option>
+                  <option>Intern & Probators sticker</option>
+                  <option>Executive sticker</option>
+                  <option>HOD sticker</option>
+                  <option>Director sticker</option>
                 </select>
               </div>
             </div>
@@ -220,13 +225,16 @@ export default function AdminPerformanceHeatmapPage() {
         {/* Conditional Component View */}
         <div className="animate-slide-up">
           {viewMode === 'heatmap' ? (
-            <TeamHeatmap 
-              key={refreshKey} 
-              thresholds={thresholds} 
-              onRankingClick={() => setViewMode('ranking')} 
-              periodType={periodType}
-              periodNo={periodNo}
-            />
+            <div className="space-y-6">
+              <TeamHeatmap 
+                key={refreshKey} 
+                thresholds={thresholds} 
+                onRankingClick={() => setViewMode('ranking')} 
+                periodType={periodType}
+                periodNo={periodNo}
+              />
+              <LivePopularityDashboard />
+            </div>
           ) : (
             <MasterboardPanel 
               externalSearch={mbSearch}

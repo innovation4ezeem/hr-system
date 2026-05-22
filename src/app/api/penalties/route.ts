@@ -3,6 +3,7 @@ import {
   createPenaltyController,
   deletePenaltyController,
   getPenaltiesController,
+  getPenaltyTypesController,
   updatePenaltyController,
 } from '@/controllers/performanceManagementController';
 import { requireRole } from '@/lib/apiAuth';
@@ -48,8 +49,12 @@ async function resolveEmployeeId(employeeId: unknown, employeeName: unknown) {
   return found?.id || `emp-${name.toLowerCase().replace(/\s+/g, '-')}`;
 }
 
-function toLegacyRecord(row: any) {
+function toLegacyRecord(row: any, penaltyTypeLookup?: Map<string, string>) {
   const year = Number(String(row.penaltyDate || '').slice(0, 4)) || new Date().getFullYear();
+
+  // Resolve category display name from penaltyTypeCode
+  const rawTypeCode = row.penaltyTypeCode || '';
+  const category = penaltyTypeLookup?.get(rawTypeCode) || rawTypeCode || 'Unknown';
 
   return {
     id: row.id,
@@ -59,6 +64,8 @@ function toLegacyRecord(row: any) {
     date: row.penaltyDate,
     year,
     mistake: row.reason,
+    category,
+    notes: row.notes || '',
     penaltyCategory: row.penaltyCategory || (Number(row.cashAmount || 0) > 0 ? 'cash' : 'standard'),
     points: row.points,
     attachment: row.attachment,
@@ -69,7 +76,7 @@ function toLegacyRecord(row: any) {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+    const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
     if (auth.response) return auth.response;
 
     const { searchParams } = new URL(request.url);
@@ -77,14 +84,28 @@ export async function GET(request: NextRequest) {
     const employeeId = (searchParams.get('employeeId') || '').trim();
     const department = (searchParams.get('department') || '').trim() || undefined;
 
-    const penalties = await getPenaltiesController({
-      employeeId: employeeId || undefined,
-      year,
-      department,
-    });
+    // Load penalties and penalty types in parallel for fast category resolution
+    const [penalties, penaltyTypes] = await Promise.all([
+      getPenaltiesController({
+        employeeId: employeeId || undefined,
+        year,
+        department,
+      }),
+      getPenaltyTypesController(),
+    ]);
 
-    const records = penalties.map(toLegacyRecord);
-    return NextResponse.json({ records, penalties }, { status: 200 });
+    // Build lookup: typeCode → typeName for display
+    const penaltyTypeLookup = new Map<string, string>();
+    if (Array.isArray(penaltyTypes)) {
+      penaltyTypes.forEach((pt: any) => {
+        if (pt.typeCode && pt.typeName) {
+          penaltyTypeLookup.set(pt.typeCode, pt.typeName);
+        }
+      });
+    }
+
+    const records = penalties.map(p => toLegacyRecord(p, penaltyTypeLookup));
+    return NextResponse.json({ records, penalties, penaltyTypes }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -93,7 +114,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireRole(request, ['hod', 'admin']);
+    const auth = requireRole(request, ['director', 'hod', 'admin']);
     if (auth.response) return auth.response;
 
     const body = await request.json();
@@ -132,7 +153,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const auth = requireRole(request, ['hod', 'admin']);
+    const auth = requireRole(request, ['director', 'hod', 'admin']);
     if (auth.response) return auth.response;
 
     const id = getId(request);
@@ -196,7 +217,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = requireRole(request, ['hod', 'admin']);
+    const auth = requireRole(request, ['director', 'hod', 'admin']);
     if (auth.response) return auth.response;
 
     const id = getId(request);

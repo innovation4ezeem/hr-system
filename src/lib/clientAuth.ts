@@ -1,4 +1,4 @@
-export type ClientRole = 'admin' | 'hod' | 'employee' | 'intern' | 'probation';
+export type ClientRole = 'admin' | 'hod' | 'director' | 'employee' | 'intern' | 'probation';
 
 export type ClientIdentity = {
   role: ClientRole;
@@ -17,6 +17,11 @@ const ROLE_DEFAULTS: Record<ClientRole, Omit<ClientIdentity, 'role'>> = {
   hod: {
     userId: 'u-001',
     userName: 'HOD / Manager',
+    department: 'Operations',
+  },
+  director: {
+    userId: 'DIR-001',
+    userName: 'Director',
     department: 'Operations',
   },
   employee: {

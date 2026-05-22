@@ -6,7 +6,7 @@ export function processUnifiedProfile(profileData: any, context: { userId: strin
   const baseProfile = {
     name: userName || 'User',
     id: userId || 'ID-PENDING',
-    role: (userRole === 'hod') ? 'Head of Operations' : (userRole === 'admin') ? 'System Admin' : 'Employee',
+    role: (userRole === 'hod') ? `Head of ${userDepartment || 'Department'}` : (userRole === 'admin') ? 'System Admin' : 'Employee',
     dept: userDepartment || 'General',
     status: 'Active',
     reportTo: userRole === 'employee' ? 'HOD' : 'Organization',

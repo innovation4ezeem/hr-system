@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const mode = searchParams.get('mode') || 'list';
 
     if (mode === 'queue') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = queueQuerySchema.safeParse(toObject(searchParams));
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'available-years') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const employeeId = searchParams.get('employeeId') || undefined;
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'history') {
-      const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+      const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
       if (auth.response) return auth.response;
 
       const parsed = historyQuerySchema.safeParse(toObject(searchParams));
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (mode === 'team-history') {
-      const auth = requireRole(request, ['hod', 'admin']);
+      const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
 
       const parsed = teamHistoryQuerySchema.safeParse(toObject(searchParams));
@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireRole(request, ['employee', 'hod', 'admin', 'intern', 'probation']);
+    const auth = requireRole(request, ['employee', 'director', 'hod', 'admin', 'intern', 'probation']);
     if (auth.response) return auth.response;
 
     const body = await request.json();
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'bulk-decision') {
-      const managerAuth = requireRole(request, ['hod', 'admin']);
+      const managerAuth = requireRole(request, ['director', 'hod', 'admin']);
       if (managerAuth.response) return managerAuth.response;
 
       const parsed = bulkDecisionSchema.safeParse(body);

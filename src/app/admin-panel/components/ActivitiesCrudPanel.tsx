@@ -147,6 +147,7 @@ export default function ActivitiesCrudPanel({
   const [showRules, setShowRules] = useState(false);
   const [editingScore, setEditingScore] = useState<{ eid: string, cat: string, val: string } | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const employeeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -165,6 +166,22 @@ export default function ActivitiesCrudPanel({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showAddForm]);
+
+  useEffect(() => {
+    const handleClickOutsideDropdown = (event: MouseEvent) => {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target as Node)) {
+        setShowEmployeeDropdown(false);
+      }
+    };
+
+    if (showEmployeeDropdown) {
+      document.addEventListener('mousedown', handleClickOutsideDropdown);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutsideDropdown);
+    }
+
+    return () => document.removeEventListener('mousedown', handleClickOutsideDropdown);
+  }, [showEmployeeDropdown]);
 
   // Draft persistence for new entry
   useEffect(() => {
@@ -483,18 +500,15 @@ export default function ActivitiesCrudPanel({
     if (ids.length === 0) return;
     setSaving(true);
     try {
-      let successCount = 0;
+      const res = await fetch(`/api/activity-scores?year=${selectedYear}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ ids })
+      });
       
-      for (let i = 0; i < ids.length; i++) {
-        const id = ids[i];
-        const res = await fetch(`/api/activity-scores?id=${encodeURIComponent(id)}&year=${selectedYear}`, {
-          method: 'DELETE',
-          headers: authHeaders
-        });
-        if (res.ok) successCount++;
-      }
+      if (!res.ok) throw new Error('Bulk delete failed');
 
-      toast.success(`Successfully deleted ${successCount} records`);
+      toast.success(`Successfully deleted ${ids.length} records`);
       setSelectedIds(new Set());
       setBulkDeleteConfirm(false);
       void loadEntries();
@@ -699,11 +713,11 @@ export default function ActivitiesCrudPanel({
                   </button>
                   {(userRole === 'admin' || userRole === 'hod') && !embedded && filteredEntries.length > 0 && (
                     <button
-                      onClick={() => setShowDeleteAllConfirm(true)}
-                      className="px-3 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white text-xs font-bold transition-all flex items-center gap-2 border border-red-500/30"
+                      onClick={() => setSelectedIds(new Set(filteredEntries.map(e => e.id)))}
+                      className="px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white text-xs font-bold transition-all flex items-center gap-2 border border-blue-500/30"
                     >
-                      <Icon name="TrashIcon" size={14} />
-                      Delete All Filtered
+                      <Icon name="CheckCircleIcon" size={14} />
+                      Select All Filtered
                     </button>
                   )}
                 </div>
@@ -750,7 +764,7 @@ export default function ActivitiesCrudPanel({
               </select>
             </div>
 
-            <div className="md:col-span-2 lg:col-span-3 relative space-y-1.5">
+            <div className="md:col-span-2 lg:col-span-3 relative space-y-1.5" ref={employeeDropdownRef}>
               <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Assigned Employees *</label>
               <button
                 type="button"

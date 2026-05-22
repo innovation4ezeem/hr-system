@@ -44,6 +44,7 @@ interface User {
   experienceInOffice?: any[];
   address?: string | null;
   mailingAddress?: string | null;
+  internDurationMonths?: number;
 }
 
 interface Department {
@@ -381,11 +382,12 @@ function UsersPanel() {
             phoneNumber: newUser.phoneNumber,
             password: newUser.password,
             role: newUser.role || 'employee',
-            dept: newUser.dept || 'Operations',
+            dept: newUser.dept || 'None',
             joinDate: newUser.joinDate,
             address: newUser.address,
             mailingAddress: newUser.mailingAddress,
             sendNotification: silentMode ? false : (newUser as any).sendNotification,
+            internDurationMonths: (newUser as any).internDurationMonths,
             employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
           }),
         });
@@ -400,13 +402,14 @@ function UsersPanel() {
         setNewUser({
           role: 'employee',
           status: 'pending',
-          dept: 'Operations',
+          dept: 'None',
           phoneNumber: '',
           joinDate: getTodayDbDate(),
           password: '',
           address: '',
           mailingAddress: '',
-          sendNotification: true
+          sendNotification: true,
+          internDurationMonths: 3,
         });
         setSaveStatus('saved');
         toast.success('User added successfully');
@@ -569,7 +572,7 @@ function UsersPanel() {
             className="input-base text-xs py-1.5 px-3 rounded-lg border"
             style={{ width: 120, background: 'rgb(var(--bg-card))', borderColor: 'rgb(var(--border))' }}
           >
-            {['All Roles', 'Admin', 'HOD', 'Employee', 'Intern', 'Probation'].map(r => <option key={r} value={r}>{r}</option>)}
+            {['All Roles', 'Admin', 'Director', 'HOD', 'Employee', 'Intern', 'Probation'].map(r => <option key={r} value={r}>{r}</option>)}
           </select>
 
           <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer hover:bg-white/5 transition-colors" style={{ borderColor: 'rgb(var(--border))' }}>
@@ -608,16 +611,30 @@ function UsersPanel() {
               <select value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value as any }))} className="input-base">
                 <option value="employee">Employee</option>
                 <option value="hod">HOD / Manager</option>
+                <option value="director">Director</option>
                 <option value="intern">Intern</option>
                 <option value="probation">Probation</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
+            {newUser.role === 'intern' && (
+              <div>
+                <label className="text-xs mb-1 block" style={{ color: 'rgb(var(--text-secondary))' }}>Intern Duration (Months)</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={(newUser as any).internDurationMonths || ''} 
+                  onChange={e => { setNewUser(p => ({ ...p, internDurationMonths: parseInt(e.target.value) || 0 })); triggerAutoSave(); }}
+                  className="input-base" 
+                  placeholder="e.g. 3" 
+                />
+              </div>
+            )}
             <div>
               <label className="text-xs mb-1 block" style={{ color: 'rgb(var(--text-secondary))' }}>Department</label>
               <div className="space-y-2">
                 <select 
-                  value={newUser.dept || (depts.length > 0 ? depts[0].name : '')} 
+                  value={newUser.dept || 'None'} 
                   onChange={e => {
                     const deptName = e.target.value;
                     const d = depts.find(x => x.name === deptName);
@@ -629,7 +646,7 @@ function UsersPanel() {
                   }} 
                   className="input-base"
                 >
-                  {depts.length === 0 && <option value="">No Departments Defined</option>}
+                  <option value="None">None</option>
                   {depts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                 </select>
               </div>
@@ -734,7 +751,7 @@ function UsersPanel() {
                   }}>
                   <td className="px-2 py-2">
                     <Link
-                      href={`/admin-panel/users/${btoa(user.id).replace(/=/g, '')}`}
+                      href={`/admin-panel/users/${encodeURIComponent(user.id)}`}
                       className={`text-left font-bold hover:text-blue-400 hover:underline transition-colors block ${isInactive ? 'text-slate-400' : 'text-blue-500 dark:text-blue-400'}`}
                     >
                       {user.name}
@@ -755,6 +772,7 @@ function UsersPanel() {
                     >
                       <option value="employee">Employee</option>
                       <option value="hod">HOD</option>
+                      <option value="director">Director</option>
                       <option value="intern">Intern</option>
                       <option value="probation">Probation</option>
                       <option value="admin">Admin</option>
@@ -789,8 +807,9 @@ function UsersPanel() {
                       className="input-base text-xs py-1" 
                       style={{ width: 'auto', backgroundColor: 'rgb(var(--bg-elevated))', border: '1px solid rgb(var(--border-subtle))' }}
                     >
+                      <option value="None">None</option>
                       {depts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                      {!depts.some(d => d.name === user.dept) && <option value={user.dept}>{user.dept}</option>}
+                      {!depts.some(d => d.name === user.dept) && user.dept !== 'None' && <option value={user.dept}>{user.dept}</option>}
                     </select>
                   </td>
                   <td className="px-2 py-2">

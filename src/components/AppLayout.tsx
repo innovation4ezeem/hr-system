@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  role?: 'admin' | 'hod' | 'employee' | 'intern' | 'probation';
+  role?: 'admin' | 'hod' | 'employee' | 'intern' | 'probation' | 'director';
   activeRoute?: string;
 }
 
@@ -33,22 +33,26 @@ export default function AppLayout({ children, role, activeRoute }: AppLayoutProp
     if (role && userRole && role !== userRole) {
       // If we are on an Admin page but user is not Admin
       if (role === 'admin' && userRole !== 'admin') {
-        router.push(userRole === 'hod' ? '/manager-dashboard' : '/employee-portal');
+        router.push((userRole === 'hod' || userRole === 'director') ? '/manager-dashboard' : '/employee-portal');
       }
       // If we are on an HOD page but user is an employee/intern
-      else if (role === 'hod' && userRole !== 'admin' && userRole !== 'hod') {
+      else if (role === 'hod' && userRole !== 'admin' && userRole !== 'hod' && userRole !== 'director') {
         router.push('/employee-portal');
       }
       // If we are an Admin but land on HOD/Employee page
-      else if (userRole === 'admin' && role !== 'admin' && role !== 'hod') {
+      else if (userRole === 'admin' && role !== 'admin' && role !== 'hod' && role !== 'director') {
         const search = window.location.search;
         router.push(`/admin-panel${search}`);
+      }
+      // If director lands on employee page
+      else if (userRole === 'director' && role !== 'admin' && role !== 'hod' && role !== 'director') {
+        router.push('/manager-dashboard');
       }
     }
   }, [role, userRole, contextLoading, router]);
 
   // Show sidebar for management roles only
-  const showSidebar = !!sidebarRole && (sidebarRole === 'admin' || sidebarRole === 'hod');
+  const showSidebar = !!sidebarRole && (sidebarRole === 'admin' || sidebarRole === 'hod' || sidebarRole === 'director');
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'rgb(var(--bg-page))', color: 'rgb(var(--text-primary))' }}>

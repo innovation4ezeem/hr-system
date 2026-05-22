@@ -8,7 +8,7 @@ import { useAppContext } from '@/context/AppContext';
 import { buildClientAuthHeaders, getInitials } from '@/lib/clientAuth';
 
 interface SidebarProps {
-  role?: 'admin' | 'hod' | 'employee' | 'intern' | 'probation';
+  role?: 'admin' | 'hod' | 'employee' | 'intern' | 'probation' | 'director';
   activeRoute?: string;
 }
 
@@ -145,7 +145,7 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
 
         if (role === 'admin') {
           newBadges['/admin-panel/leave'] = data.pendingLeaveCount || 0;
-        } else if (role === 'hod') {
+        } else if (role === 'hod' || role === 'director') {
           newBadges['/manager-dashboard/leave'] = data.pendingLeaveCount || 0;
         }
 
@@ -169,7 +169,7 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
 
   // Use stable defaults to avoid hydration mismatch
   const currentRole = role || 'employee';
-  const rawDisplayName = userName || (currentRole === 'employee' ? 'Employee' : currentRole === 'admin' ? 'Admin' : 'HOD');
+  const rawDisplayName = userName || (currentRole === 'employee' ? 'Employee' : currentRole === 'admin' ? 'Admin' : currentRole === 'director' ? 'Director' : 'HOD');
   const displayName = useMemo(() => {
     try {
       return decodeURIComponent(rawDisplayName);
@@ -179,7 +179,7 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
   }, [rawDisplayName]);
 
   const initials = getInitials(displayName, '??');
-  const displayRole = currentRole === 'employee' ? 'Employee' : currentRole === 'admin' ? 'System Admin' : 'Head of Operations';
+  const displayRole = currentRole === 'employee' ? 'Employee' : currentRole === 'admin' ? 'System Admin' : currentRole === 'director' ? 'Director' : `Head of ${userDepartment || 'Department'}`;
 
   const handleCollapseToggle = () => {
     if (!collapsed) {
@@ -249,10 +249,10 @@ export default function Sidebar({ role = 'employee', activeRoute }: SidebarProps
       {!collapsed && (
         <div className="px-4 py-2">
           <span className="badge text-xs font-medium px-2 py-1 rounded-md" style={{
-            background: role === 'admin' ? 'rgba(167,139,250,0.15)' : role === 'hod' ? 'rgba(79,127,255,0.15)' : 'rgba(52,211,153,0.15)',
-            color: role === 'admin' ? 'rgb(167 139 250)' : role === 'hod' ? 'rgb(79 127 255)' : 'rgb(52 211 153)',
+            background: role === 'admin' ? 'rgba(167,139,250,0.15)' : (role === 'hod' || role === 'director') ? 'rgba(79,127,255,0.15)' : 'rgba(52,211,153,0.15)',
+            color: role === 'admin' ? 'rgb(167 139 250)' : (role === 'hod' || role === 'director') ? 'rgb(79 127 255)' : 'rgb(52 211 153)',
           }}>
-            {role === 'admin' ? 'Admin' : role === 'hod' ? 'HOD / Manager' : 'Employee'}
+            {role === 'admin' ? 'Admin' : role === 'director' ? 'Director' : role === 'hod' ? 'HOD / Manager' : 'Employee'}
           </span>
         </div>
       )}
