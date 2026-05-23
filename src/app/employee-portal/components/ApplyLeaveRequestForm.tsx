@@ -55,9 +55,22 @@ function getBalanceBannerStyle(after: number, minAllowed: number, before: number
   return { bg: 'rgba(52,211,153,0.10)', border: 'rgba(52,211,153,0.35)', text: 'rgb(52 211 153)', icon: '✅' };
 }
 
+const DEFAULT_LEAVE_TYPES: LeaveTypeOption[] = [
+  { code: 'AL', name: 'Annual Leave', availableDays: 0, allowNegativeBalance: false },
+  { code: 'MC', name: 'Medical Leave', availableDays: 0, allowNegativeBalance: false },
+  { code: 'WFH', name: 'WFH', availableDays: 0, allowNegativeBalance: false },
+  { code: 'UNPAID', name: 'Unpaid Leave', availableDays: 0, allowNegativeBalance: false },
+  { code: 'REWARD', name: 'Reward Leave', availableDays: 0, allowNegativeBalance: false },
+  { code: 'CS', name: 'Compassionate Leave', availableDays: 0, allowNegativeBalance: false },
+  { code: 'REPLACEMENT', name: 'Replacement Leave', availableDays: 0, allowNegativeBalance: false },
+  { code: 'ADDITIONAL', name: 'Additional Leave', availableDays: 0, allowNegativeBalance: false },
+  { code: 'MATERNITY', name: 'Maternity Leave', availableDays: 0, allowNegativeBalance: false },
+  { code: 'PATERNITY', name: 'Paternity Leave', availableDays: 0, allowNegativeBalance: false },
+];
+
 export default function ApplyLeaveRequestForm() {
   const router = useRouter();
-  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>(DEFAULT_LEAVE_TYPES);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<LeaveValidationPayload | null>(null);
@@ -110,6 +123,15 @@ export default function ApplyLeaveRequestForm() {
   // Clear draft on success helper
   const clearDraft = () => localStorage.removeItem(`leave_draft_${userId}`);
 
+  const finalEndDate = form.endDate || form.startDate;
+  const isSingleDay = finalEndDate === form.startDate;
+
+  useEffect(() => {
+    if (form.halfDay && isSingleDay && form.toHalf !== form.fromHalf) {
+      setForm(prev => ({ ...prev, toHalf: prev.fromHalf }));
+    }
+  }, [form.halfDay, isSingleDay, form.fromHalf, form.toHalf]);
+
   const authHeaders = useMemo(() => {
     return buildClientAuthHeaders({
       role: userRole as any,
@@ -128,6 +150,7 @@ export default function ApplyLeaveRequestForm() {
 
   // Load eligible leave types
   useEffect(() => {
+    if (!employeeId) return;
     let cancelled = false;
     const loadEligibleLeaveTypes = async () => {
       try {
@@ -286,7 +309,7 @@ export default function ApplyLeaveRequestForm() {
       toast.success('Leave application submitted — awaiting manager approval');
       const reqId = payload?.request?.id as string | undefined;
       const yr = form.startDate ? Number(form.startDate.substring(0, 4)) : new Date().getFullYear();
-      router.push('/employee-portal/leave');
+      window.location.href = '/employee-portal/leave';
     } catch (error) {
       console.error('Submission error:', error);
       let message = 'Failed to submit request';
@@ -318,12 +341,12 @@ export default function ApplyLeaveRequestForm() {
           <select
             value={form.typeCode}
             onChange={e => setForm(prev => ({ ...prev, typeCode: e.target.value as LeaveTypeCode }))}
-            className="input-base text-sm"
-            disabled={loadingTypes || leaveTypes.length === 0}
+            className="input-base text-sm cursor-pointer"
+            disabled={leaveTypes.length === 0}
           >
             {leaveTypes.map(type => (
               <option key={`lt-${type.code}`} value={type.code}>
-                {type.name} — {type.availableDays}d remaining
+                {type.name} {loadingTypes ? '— (loading balance...)' : `— ${type.availableDays}d remaining`}
               </option>
             ))}
             {/* If Annual Leave has carry forward, the system already handles it, 
@@ -380,24 +403,47 @@ export default function ApplyLeaveRequestForm() {
               Enable half-day
             </label>
             {form.halfDay && (
-              <div className="flex gap-2">
+              isSingleDay ? (
                 <select
-                  className="input-base text-xs"
+                  className="input-base text-xs font-semibold px-2 py-1 cursor-pointer"
                   value={form.fromHalf}
-                  onChange={e => setForm(prev => ({ ...prev, fromHalf: e.target.value as 'AM' | 'PM' }))}
+                  onChange={e => {
+                    const val = e.target.value as 'AM' | 'PM';
+                    setForm(prev => ({ ...prev, fromHalf: val, toHalf: val }));
+                  }}
+                  style={{ minHeight: '34px', background: 'rgb(var(--bg-elevated))', border: '1px solid rgb(var(--border-subtle))', color: 'rgb(var(--text-primary))' }}
                 >
-                  <option value="AM">From: Morning (AM)</option>
-                  <option value="PM">From: Afternoon (PM)</option>
+                  <option value="AM">Morning (AM)</option>
+                  <option value="PM">Afternoon (PM)</option>
                 </select>
-                <select
-                  className="input-base text-xs"
-                  value={form.toHalf}
-                  onChange={e => setForm(prev => ({ ...prev, toHalf: e.target.value as 'AM' | 'PM' }))}
-                >
-                  <option value="AM">To: Morning (AM)</option>
-                  <option value="PM">To: Afternoon (PM)</option>
-                </select>
-              </div>
+              ) : (
+                <div className="flex gap-3 items-center flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px]" style={{ color: 'rgb(var(--text-secondary))' }}>First Day:</span>
+                    <select
+                      className="input-base text-xs font-medium cursor-pointer"
+                      value={form.fromHalf}
+                      onChange={e => setForm(prev => ({ ...prev, fromHalf: e.target.value as 'AM' | 'PM' }))}
+                      style={{ minHeight: '34px', background: 'rgb(var(--bg-elevated))', border: '1px solid rgb(var(--border-subtle))', color: 'rgb(var(--text-primary))' }}
+                    >
+                      <option value="AM">Morning (AM)</option>
+                      <option value="PM">Afternoon (PM)</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px]" style={{ color: 'rgb(var(--text-secondary))' }}>Last Day:</span>
+                    <select
+                      className="input-base text-xs font-medium cursor-pointer"
+                      value={form.toHalf}
+                      onChange={e => setForm(prev => ({ ...prev, toHalf: e.target.value as 'AM' | 'PM' }))}
+                      style={{ minHeight: '34px', background: 'rgb(var(--bg-elevated))', border: '1px solid rgb(var(--border-subtle))', color: 'rgb(var(--text-primary))' }}
+                    >
+                      <option value="AM">Morning (AM)</option>
+                      <option value="PM">Afternoon (PM)</option>
+                    </select>
+                  </div>
+                </div>
+              )
             )}
           </div>
         </div>

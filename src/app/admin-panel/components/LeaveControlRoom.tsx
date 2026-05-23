@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { buildClientAuthHeaders } from '@/lib/clientAuth';
@@ -54,6 +55,7 @@ type EmployeeLeaveProfile = {
   status: 'active' | 'inactive' | 'pending' | 'terminated';
   balances: {
     al: number;
+    alCarryForward: number;
     mc: number;
     reward: number;
     cs: number;
@@ -149,7 +151,7 @@ function buildProfileFromDb(user: {
   dept: string;
   status: string;
   joinDate: string | null;
-}, balances: Array<{ leaveTypeCode: string; availableDays?: number; usedDays?: number; openingDays?: number }>, wfhMonthlyCap: number): EmployeeLeaveProfile {
+}, balances: Array<{ leaveTypeCode: string; availableDays?: number; usedDays?: number; openingDays?: number; carryForwardDays?: number }>, wfhMonthlyCap: number): EmployeeLeaveProfile {
   const balanceMap = new Map(balances.map((balance) => [balance.leaveTypeCode, balance]));
   const alBalance = balanceMap.get('AL');
   const mcBalance = balanceMap.get('MC');
@@ -169,6 +171,7 @@ function buildProfileFromDb(user: {
     reportTo: 'Database-backed',
     balances: {
       al: Number(alBalance?.availableDays ?? 0),
+      alCarryForward: Number(alBalance?.carryForwardDays ?? 0),
       mc: Number(mcBalance?.availableDays ?? 0),
       reward: Number(rewardBalance?.availableDays ?? 0),
       cs: Number(csBalance?.availableDays ?? 0),
@@ -198,6 +201,9 @@ function buildProfileFromDb(user: {
 }
 
 export default function LeaveControlRoom() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { userRole, userId, userName, userDepartment, silentMode } = useAppContext();
   const authHeaders = useMemo(() => buildClientAuthHeaders({
     role: userRole as any,
@@ -212,7 +218,7 @@ export default function LeaveControlRoom() {
   const [manualDelta, setManualDelta] = useState(1);
   const [manualReason, setManualReason] = useState('');
 
-  const [activeHeaderSection, setActiveHeaderSection] = useState('ledger');
+  const [activeHeaderSection, setActiveHeaderSection] = useState('pending-queue');
 
   const [wfhMonthlyCap, setWfhMonthlyCap] = useState(4);
   const [requests, setRequests] = useState<LeaveRequest[]>(initialRequests);
@@ -266,10 +272,9 @@ export default function LeaveControlRoom() {
   const reportYear = now.getFullYear();
 
   const sectionHeaderItems = [
-
-    { id: 'ledger', label: 'View All Person' },
     { id: 'pending-queue', label: 'Pending Queue' },
     { id: 'leave-history', label: 'Leave History' },
+    { id: 'ledger', label: 'View All Employee' },
     { id: 'quota', label: 'Quota Management' },
   ];
 
@@ -373,15 +378,16 @@ export default function LeaveControlRoom() {
         const target = profiles.find(p => p.id === id);
         if (!target) return null;
 
-        // Base calculation on ENTITLEMENT, not balance
-        const newEntitlement = Math.max(0, Number(manualDelta.toFixed(2)));
+        // Base calculation on adding/deducting from CURRENT ENTITLEMENT
+        const currentEntitlement = Number(target.entitlements[balanceKey as keyof typeof target.entitlements] ?? 0);
+        const newEntitlement = Math.max(0, Number((currentEntitlement + manualDelta).toFixed(2)));
 
         return {
           employeeId: id,
           leaveTypeCode: manualType,
           year,
           overrideDays: newEntitlement,
-          overrideReason: manualReason || `Manual Admin Override (Set to ${newEntitlement} days)`,
+          overrideReason: manualReason || `Manual Adjustment (${manualDelta >= 0 ? '+' : ''}${manualDelta} days. New Total: ${newEntitlement} days)`,
           overriddenBy: userId || userRole,
         };
       }).filter(Boolean);
@@ -423,6 +429,44 @@ export default function LeaveControlRoom() {
   };
 
   const approveRequest = async (id: string) => {
+    // Optimistic UI updates
+    const targetReq = requests.find(r => r.id === id);
+    let previousRequests = requests;
+    let previousProfiles = profiles;
+
+    if (targetReq) {
+      setRequests(prev => prev.map(r => (r.id === id ? { ...r, status: 'Approved' } : r)));
+      
+      setProfiles(prev => prev.map(p => {
+        if (p.id !== targetReq.employeeId) return p;
+        
+        const reqType = targetReq.type as string;
+        const balanceKey =
+          reqType === 'WFH' ? 'wfh' :
+            reqType === 'MC' ? 'mc' :
+              reqType === 'REWARD' ? 'reward' :
+                reqType === 'CS' ? 'cs' :
+                  reqType === 'UNPAID' ? 'unpaid' :
+                    reqType === 'MATERNITY' ? 'maternity' :
+                      reqType === 'PATERNITY' ? 'paternity' :
+                        reqType === 'REPLACEMENT' ? 'replacement' :
+                          reqType === 'ADDITIONAL' ? 'additional' :
+                            reqType === 'BEREAVEMENT' ? 'bereavement' :
+                              'al';
+        
+        const currentVal = Number(p.balances[balanceKey as keyof typeof p.balances] ?? 0);
+        const newVal = Math.max(0, currentVal - targetReq.units);
+        
+        return {
+          ...p,
+          balances: {
+            ...p.balances,
+            [balanceKey]: Number(newVal.toFixed(2))
+          }
+        };
+      }));
+    }
+
     try {
       setSaveState('saving');
       const response = await fetch(`/api/leave-requests/${id}`, {
@@ -436,10 +480,13 @@ export default function LeaveControlRoom() {
         throw new Error(err.error || 'Approval failed');
       }
 
-      setRequests(prev => prev.map(r => (r.id === id ? { ...r, status: 'Approved' } : r)));
       toast.success('Leave request approved');
+      setRefreshKey(prev => prev + 1);
       setSaveState('saved');
     } catch (error) {
+      // Revert optimistic updates on error
+      setRequests(previousRequests);
+      setProfiles(previousProfiles);
       setSaveState('error');
       toast.error(error instanceof Error ? error.message : 'Approval failed');
     }
@@ -448,6 +495,10 @@ export default function LeaveControlRoom() {
   const rejectRequest = async (id: string) => {
     const reason = window.prompt('Reason for rejection:', 'Does not meet requirements');
     if (reason === null) return;
+
+    let previousRequests = requests;
+    // Optimistic UI update
+    setRequests(prev => prev.map(r => (r.id === id ? { ...r, status: 'Rejected' } : r)));
 
     try {
       setSaveState('saving');
@@ -462,10 +513,12 @@ export default function LeaveControlRoom() {
         throw new Error(err.error || 'Rejection failed');
       }
 
-      setRequests(prev => prev.map(r => (r.id === id ? { ...r, status: 'Rejected' } : r)));
       toast.success('Leave request rejected');
+      setRefreshKey(prev => prev + 1);
       setSaveState('saved');
     } catch (error) {
+      // Revert optimistic update
+      setRequests(previousRequests);
       setSaveState('error');
       toast.error(error instanceof Error ? error.message : 'Rejection failed');
     }
@@ -483,6 +536,7 @@ export default function LeaveControlRoom() {
       const year = reportYear;
       const fieldMap: Record<string, string> = {
         al: 'AL',
+        alCarryForward: 'AL_CARRY',
         mc: 'MC',
         reward: 'REWARD',
         cs: 'CS',
@@ -491,8 +545,7 @@ export default function LeaveControlRoom() {
         maternity: 'MATERNITY',
         paternity: 'PATERNITY',
         replacement: 'REPLACEMENT',
-        additional: 'ADDITIONAL',
-        bereavement: 'BEREAVEMENT'
+        additional: 'ADDITIONAL'
       };
 
       setSaveState('saving');
@@ -540,7 +593,9 @@ export default function LeaveControlRoom() {
   useEffect(() => {
     let cancelled = false;
     const loadState = async () => {
-      setLoadingState(true);
+      if (!hydratedRef.current) {
+        setLoadingState(true);
+      }
       try {
         const year = reportYear;
         const [usersResponse, requestsResponse, balancesResponse, settingsRes, yearsRes] = await Promise.all([
@@ -551,9 +606,18 @@ export default function LeaveControlRoom() {
           fetch('/api/archive-records?mode=years', { headers: authHeaders }),
         ]);
 
-        if (!usersResponse.ok) throw new Error('Failed to load users');
-        if (!requestsResponse.ok) throw new Error('Failed to load leave requests');
-        if (!balancesResponse.ok) throw new Error('Failed to load leave balances');
+        if (!usersResponse.ok) {
+          const err = await usersResponse.json().catch(() => ({}));
+          throw new Error(`Failed to load users: ${err.error || usersResponse.statusText}`);
+        }
+        if (!requestsResponse.ok) {
+          const err = await requestsResponse.json().catch(() => ({}));
+          throw new Error(`Failed to load leave requests: ${err.error || requestsResponse.statusText}`);
+        }
+        if (!balancesResponse.ok) {
+          const err = await balancesResponse.json().catch(() => ({}));
+          throw new Error(`Failed to load leave balances: ${err.error || balancesResponse.statusText}`);
+        }
 
         const usersPayload = await usersResponse.json();
         const requestsPayload = await requestsResponse.json();
@@ -618,6 +682,7 @@ export default function LeaveControlRoom() {
               reportTo: 'Database-backed',
               balances: {
                 al: al?.availableDays || 0,
+                alCarryForward: al?.carryForwardDays || 0,
                 mc: sl?.availableDays || 0,
                 wfh: wfh?.availableDays || 0,
                 reward: reward?.availableDays || 0,
@@ -664,7 +729,7 @@ export default function LeaveControlRoom() {
       } catch (error) {
         console.error('[LeaveControlRoom] Load error:', error);
         if (!cancelled) {
-          toast.error('Load leave records failed');
+          toast.error(error instanceof Error ? error.message : 'Load leave records failed');
         }
       } finally {
         if (!cancelled) {
@@ -679,6 +744,44 @@ export default function LeaveControlRoom() {
       cancelled = true;
     };
   }, [authHeaders, reportYear, wfhMonthlyCap, refreshKey]);
+
+  // Handle direct actions from email links
+  useEffect(() => {
+    if (loadingState || requests.length === 0) return;
+
+    const targetId = searchParams?.get('requestId');
+    const action = searchParams?.get('action');
+
+    if (targetId && action) {
+      const targetReq = requests.find(r => r.id === targetId);
+
+      const cleanUrl = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('requestId');
+        params.delete('action');
+        const newSearch = params.toString();
+        router.replace(newSearch ? `${pathname}?${newSearch}` : pathname);
+      };
+
+      if (targetReq) {
+        if (targetReq.status === 'Applied') {
+          if (action === 'approve') {
+            void approveRequest(targetReq.id);
+            cleanUrl();
+          } else if (action === 'reject') {
+            void rejectRequest(targetReq.id);
+            cleanUrl();
+          }
+        } else {
+          toast.success(`Request is already processed (Status: ${targetReq.status})`);
+          cleanUrl();
+        }
+      } else {
+        toast.error(`Request ${targetId} not found in the list.`);
+        cleanUrl();
+      }
+    }
+  }, [loadingState, requests.length, searchParams, pathname, router]);
 
   if (loadingState) {
     return (
@@ -859,74 +962,6 @@ export default function LeaveControlRoom() {
         </div>
       </div>
 
-      <section id="leave-sec-ledger" className="rounded-xl p-4" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
-        <h4 className="text-sm font-semibold mb-3" style={{ color: 'rgb(var(--text-primary))' }}>View All Employee </h4>
-        <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid rgb(var(--border-subtle))' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: 'rgb(var(--bg-elevated))' }}>
-                {['Person', 'AL', 'MC', 'REWARD', 'REPLACE', 'WFH', 'CS', 'UNPAID', 'MATER', 'PATER', 'ADDIT', 'BEREAV', 'WFH Used', 'Actions'].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-xs whitespace-nowrap" style={{ color: 'rgb(var(--text-muted))' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProfiles.map(p => {
-                const editing = editingProfileId === p.id;
-                return (
-                  <tr key={p.id} style={{ borderTop: '1px solid rgb(var(--border))' }}>
-                    <td className="px-3 py-2">
-                      <p style={{ color: 'rgb(var(--text-primary))' }}>{decodeURIComponent(p.name)}</p>
-                      <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>{p.id} • {p.dept}</p>
-                    </td>
-                    {(['al', 'mc', 'reward', 'replacement', 'wfh', 'cs', 'unpaid', 'maternity', 'paternity', 'additional', 'bereavement', 'wfhUsed'] as Array<keyof EmployeeLeaveProfile['balances']>).map(field => (
-                      <td key={`${p.id}-${field}`} className="px-3 py-2 text-center">
-                        {editing ? (
-                          <input
-                            type="number"
-                            value={p.balances[field]}
-                            onChange={e => updateBalance(p.id, field, Number(e.target.value))}
-                            className="input-base text-xs"
-                            style={{ padding: '4px 8px', width: 60 }}
-                          />
-                        ) : (
-                          <span style={{ color: 'rgb(var(--text-secondary))' }}>{p.balances[field]}</span>
-                        )}
-                      </td>
-                    ))}
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-1">
-                        {editing ? (
-                          <button
-                            className="btn-primary flex items-center gap-2"
-                            onClick={() => saveProfileEdit(p.id)}
-                            disabled={saveState === 'saving'}
-                          >
-                            {saveState === 'saving' ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-                                Saving...
-                              </>
-                            ) : 'Save'}
-                          </button>
-                        ) : (
-                           <button 
-                             className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20" 
-                             onClick={() => setEditingProfileId(p.id)}
-                           >
-                             Edit
-                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <section id="leave-sec-pending-queue" className="rounded-xl p-4" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
         <h4 className="text-sm font-semibold mb-3" style={{ color: 'rgb(var(--text-primary))' }}>Pending Queue & Visibility</h4>
         <p className="text-xs mb-3" style={{ color: 'rgb(var(--text-secondary))' }}>
@@ -1101,6 +1136,74 @@ export default function LeaveControlRoom() {
         </div>
       </section>
 
+      <section id="leave-sec-ledger" className="rounded-xl p-4" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
+        <h4 className="text-sm font-semibold mb-3" style={{ color: 'rgb(var(--text-primary))' }}>View All Employee </h4>
+        <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid rgb(var(--border-subtle))' }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ background: 'rgb(var(--bg-elevated))' }}>
+                {['Person', 'AL', 'AL Carry', 'MC', 'REWARD', 'REPLACE', 'WFH', 'CS', 'UNPAID', 'MATER', 'PATER', 'ADDIT', 'WFH Used', 'Actions'].map(h => (
+                  <th key={h} className="px-3 py-2 text-left text-xs whitespace-nowrap" style={{ color: 'rgb(var(--text-muted))' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProfiles.map(p => {
+                const editing = editingProfileId === p.id;
+                return (
+                  <tr key={p.id} style={{ borderTop: '1px solid rgb(var(--border))' }}>
+                    <td className="px-3 py-2">
+                      <p style={{ color: 'rgb(var(--text-primary))' }}>{decodeURIComponent(p.name)}</p>
+                      <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>{p.id} • {p.dept}</p>
+                    </td>
+                    {(['al', 'alCarryForward', 'mc', 'reward', 'replacement', 'wfh', 'cs', 'unpaid', 'maternity', 'paternity', 'additional', 'wfhUsed'] as Array<keyof EmployeeLeaveProfile['balances']>).map(field => (
+                      <td key={`${p.id}-${field}`} className="px-3 py-2 text-center">
+                        {editing ? (
+                          <input
+                            type="number"
+                            value={p.balances[field]}
+                            onChange={e => updateBalance(p.id, field, Number(e.target.value))}
+                            className="input-base text-xs"
+                            style={{ padding: '4px 8px', width: 60 }}
+                          />
+                        ) : (
+                          <span style={{ color: 'rgb(var(--text-secondary))' }}>{p.balances[field]}</span>
+                        )}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        {editing ? (
+                          <button
+                            className="btn-primary flex items-center gap-2"
+                            onClick={() => saveProfileEdit(p.id)}
+                            disabled={saveState === 'saving'}
+                          >
+                            {saveState === 'saving' ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                                Saving...
+                              </>
+                            ) : 'Save'}
+                          </button>
+                        ) : (
+                           <button 
+                             className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20" 
+                             onClick={() => setEditingProfileId(p.id)}
+                           >
+                             Edit
+                           </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="leave-sec-quota" className="rounded-xl p-4" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
         <h4 className="text-sm font-semibold mb-3" style={{ color: 'rgb(var(--text-primary))' }}>Quota Management</h4>
 
@@ -1152,38 +1255,52 @@ export default function LeaveControlRoom() {
                 </div>
 
                 {isEmployeeDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-[#1a1c23] border border-white/10 rounded-lg shadow-xl p-2 animate-in fade-in zoom-in duration-100">
+                  <div
+                    className="absolute top-full left-0 right-0 z-50 mt-1 border rounded-lg shadow-xl p-2 animate-in fade-in zoom-in duration-100"
+                    style={{ background: 'rgb(var(--bg-elevated))', borderColor: 'rgb(var(--border))' }}
+                  >
                     <div className="relative mb-2">
                       <Icon name="MagnifyingGlassIcon" size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                       <input
                         type="text"
                         placeholder="Search..."
-                        className="w-full bg-white/5 border border-white/10 rounded px-7 py-1 text-[10px] outline-none focus:border-blue-500/50"
+                        className="w-full border rounded px-7 py-1 text-[10px] outline-none focus:border-blue-500/50"
+                        style={{ background: 'rgb(var(--bg-card))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-primary))' }}
                         value={employeeSearchTerm}
                         onChange={e => setEmployeeSearchTerm(e.target.value)}
                         onClick={e => e.stopPropagation()}
                       />
                     </div>
                     <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
-                      <label className="flex items-center gap-2 py-1 px-2 hover:bg-white/5 rounded cursor-pointer transition-colors text-[10px] border-b border-white/5 mb-1" onClick={e => e.stopPropagation()}>
+                      <label
+                        className="flex items-center gap-2 py-1 px-2 rounded cursor-pointer transition-colors text-[10px] border-b mb-1 hover:bg-[rgba(var(--text-primary),0.05)]"
+                        style={{ borderColor: 'rgb(var(--border-subtle))' }}
+                        onClick={e => e.stopPropagation()}
+                      >
                         <input
                           type="checkbox"
-                          className="rounded border-white/20 bg-transparent text-blue-500 focus:ring-0"
+                          className="rounded bg-transparent text-blue-500 focus:ring-0"
+                          style={{ borderColor: 'rgb(var(--border))' }}
                           checked={selectedOverrideIds.size === profiles.length && profiles.length > 0}
                           onChange={(e) => {
                             if (e.target.checked) setSelectedOverrideIds(new Set(profiles.map(p => p.id)));
                             else setSelectedOverrideIds(new Set());
                           }}
                         />
-                        <span className="font-semibold text-blue-400">Select All</span>
+                        <span className="font-semibold text-blue-500 dark:text-blue-400">Select All</span>
                       </label>
                       {profiles
                         .filter(p => !employeeSearchTerm || p.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) || p.dept.toLowerCase().includes(employeeSearchTerm.toLowerCase()))
                         .map(p => (
-                          <label key={p.id} className="flex items-center gap-2 py-1 px-2 hover:bg-white/5 rounded cursor-pointer transition-colors" onClick={e => e.stopPropagation()}>
+                          <label
+                            key={p.id}
+                            className="flex items-center gap-2 py-1 px-2 rounded cursor-pointer transition-colors hover:bg-[rgba(var(--text-primary),0.05)]"
+                            onClick={e => e.stopPropagation()}
+                          >
                             <input
                               type="checkbox"
-                              className="rounded border-white/20 bg-transparent text-blue-500 focus:ring-0"
+                              className="rounded bg-transparent text-blue-500 focus:ring-0"
+                              style={{ borderColor: 'rgb(var(--border))' }}
                               checked={selectedOverrideIds.has(p.id)}
                               onChange={(e) => {
                                 const next = new Set(selectedOverrideIds);
@@ -1192,7 +1309,9 @@ export default function LeaveControlRoom() {
                                 setSelectedOverrideIds(next);
                               }}
                             />
-                            <span className="text-[10px] truncate">{p.name} <span className="text-muted-foreground opacity-50 ml-1">[{p.dept}]</span></span>
+                            <span className="text-[10px] truncate" style={{ color: 'rgb(var(--text-primary))' }}>
+                              {p.name} <span className="text-muted-foreground opacity-50 ml-1">[{p.dept}]</span>
+                            </span>
                           </label>
                         ))}
                     </div>
@@ -1212,7 +1331,6 @@ export default function LeaveControlRoom() {
                   <option value="MATERNITY">Maternity Leave</option>
                   <option value="PATERNITY">Paternity Leave</option>
                   <option value="ADDITIONAL">Additional Leave</option>
-                  <option value="BEREAVEMENT">Bereavement Leave</option>
                   <option value="UNPAID">Leave w/o Pay</option>
                 </select>
               </div>
@@ -1220,8 +1338,8 @@ export default function LeaveControlRoom() {
 
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="space-y-1">
-                <label className="text-[10px] text-muted-foreground">New Total Days</label>
-                <input className="input-base text-xs w-full" type="number" value={manualDelta} onChange={e => setManualDelta(Number(e.target.value))} />
+                <label className="text-[10px] text-muted-foreground">Adjust Days (+/-)</label>
+                <input className="input-base text-xs w-full" type="number" value={manualDelta} onChange={e => setManualDelta(Number(e.target.value))} placeholder="e.g. +1 or -1" />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-muted-foreground">Reference Reason</label>

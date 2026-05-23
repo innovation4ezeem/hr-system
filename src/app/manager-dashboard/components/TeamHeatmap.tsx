@@ -465,10 +465,9 @@ export default function TeamHeatmap({
                     style={{ width: 100 }}
                   >
                     <option value="All">All Months</option>
-                    <option value="January">January</option>
-                    <option value="February">February</option>
-                    <option value="March">March</option>
-                    <option value="April">April</option>
+                    {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
                   </select>
                 )}
               </div>

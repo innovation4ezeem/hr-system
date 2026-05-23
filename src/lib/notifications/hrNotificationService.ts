@@ -80,7 +80,7 @@ export class HRNotificationService {
       }
 
       for (const manager of managers) {
-        const mgrTpl = emailTemplates.leaveSubmittedManager(details, manager.name);
+        const mgrTpl = emailTemplates.leaveSubmittedManager(details, manager.name, manager.role);
         await sendDualNotification({
           recipientId: manager.id,
           recipientEmail: manager.email,
@@ -409,6 +409,11 @@ export class HRNotificationService {
     actorName: string;
   }) {
     try {
+      if (params.activityName.startsWith('Worksheet Adjustment:')) {
+        console.log(`[Notification] Suppressing notification for Worksheet Adjustment for ${params.employeeName}`);
+        return;
+      }
+
       const allUsers = await listUsers();
       const employeeRecord = allUsers.find(u => u.id === params.employeeId);
       if (!employeeRecord) return;

@@ -209,7 +209,7 @@ export async function createActivityScoreController(payload: ActivityPayload) {
         const bucket = normalizeScoreBucket(record.scoreBucket, record.category);
         const key = `${bucket}::${column}`;
         sheet.cellsByEmployee[record.assignedToId][key] = (sheet.cellsByEmployee[record.assignedToId][key] || 0) + Number(record.score || 0);
-        await savePerformanceSheetController(parseYear(record.year), sheet);
+        await savePerformanceSheetController(parseYear(record.year), sheet, record.assignedToId, record.month);
       }
     }
   } catch (e) {
@@ -456,7 +456,11 @@ export async function updateActivityScoreController(id: string, payload: Activit
     }
 
     if (modified) {
-      await savePerformanceSheetController(parseYear(record.year), sheet);
+      if (existing.assignedToId === record.assignedToId && existing.month === record.month) {
+        await savePerformanceSheetController(parseYear(record.year), sheet, record.assignedToId, record.month);
+      } else {
+        await savePerformanceSheetController(parseYear(record.year), sheet);
+      }
     }
   } catch (e) {
     console.error('Update incremental sync failed, full sync:', e);
@@ -554,7 +558,11 @@ export async function deleteActivityScoreController(idOrIds: string | string[], 
     }
 
     if (sheetModified) {
-      await savePerformanceSheetController(parseYear(year), sheet);
+      if (existings.length === 1) {
+        await savePerformanceSheetController(parseYear(year), sheet, existings[0].assigned_to_id, existings[0].month);
+      } else {
+        await savePerformanceSheetController(parseYear(year), sheet);
+      }
     }
   } catch (e) {
     console.error('Incremental sync failed, falling back to full sync:', e);

@@ -567,7 +567,8 @@ export async function ensureBalancesForEmployee(employeeId: string, year: number
 
     let carryForwardDays = 0;
     if (leaveType.code === 'AL') {
-      carryForwardDays = computedAlCarryForward;
+      const carryOverride = overrides.get('AL_CARRY');
+      carryForwardDays = carryOverride !== undefined ? carryOverride : computedAlCarryForward;
     }
 
     const minAllowedDays = leaveType.allowNegativeBalance ? -leaveType.maxNegativeDays : 0;
@@ -654,7 +655,7 @@ export async function listAllTeamBalances(year: number): Promise<Record<string, 
       id: row.id,
       employeeId: row.employee_id,
       leaveTypeCode: row.leave_type_code,
-      leaveTypeName: lt.name || row.leave_type_code,
+      leaveTypeName: lt?.name || row.leave_type_code,
       year: Number(row.balance_year),
       openingDays: Number(row.opening_days || 0),
       carryForwardDays: Number(row.carry_forward_days || 0),
@@ -664,8 +665,8 @@ export async function listAllTeamBalances(year: number): Promise<Record<string, 
       availableDays: (row.leave_type_code === 'WFH' 
         ? Number(row.opening_days || 0) - (wfhUsageMap[row.employee_id] || 0)
         : Number(row.opening_days || 0) + Number(row.carry_forward_days || 0) + Number(row.adjusted_days || 0) - Number(row.used_days || 0)),
-      allowNegativeBalance: Boolean(lt.allow_negative_balance),
-      maxNegativeDays: Number(lt.max_negative_days || 0),
+      allowNegativeBalance: Boolean(lt?.allow_negative_balance),
+      maxNegativeDays: Number(lt?.max_negative_days || 0),
     });
   }
   return result;
@@ -732,7 +733,7 @@ export async function listLeaveBalances(employeeId: string, year: number): Promi
       id: row.id,
       employeeId: row.employee_id,
       leaveTypeCode: row.leave_type_code,
-      leaveTypeName: lt.name || row.leave_type_code,
+      leaveTypeName: lt?.name || row.leave_type_code,
       year: Number(row.balance_year),
       openingDays: opening,
       carryForwardDays: cf,
@@ -740,8 +741,8 @@ export async function listLeaveBalances(employeeId: string, year: number): Promi
       usedDays: used,
       minAllowedDays: Number(row.min_allowed_days || 0),
       availableDays: opening + cf + adj - used,
-      allowNegativeBalance: Boolean(lt.allow_negative_balance),
-      maxNegativeDays: Number(lt.max_negative_days || 0),
+      allowNegativeBalance: Boolean(lt?.allow_negative_balance),
+      maxNegativeDays: Number(lt?.max_negative_days || 0),
     });
   }
 

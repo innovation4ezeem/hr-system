@@ -787,7 +787,7 @@ export default function ActivitiesCrudPanel({
                         <button 
                           type="button"
                           className="text-[10px] font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 uppercase tracking-wider"
-                          onClick={() => setSelectedEmployeeIds(users.map(u => u.id))}
+                          onClick={() => setSelectedEmployeeIds(users.filter(u => showInactive ? u.status === 'inactive' : u.status === 'active').map(u => u.id))}
                         >
                           Select All
                         </button>
@@ -1099,7 +1099,7 @@ export default function ActivitiesCrudPanel({
                       <td className="px-3 py-3 text-xs">
                         {editingId === entry.id ? (
                           <select
-                            className="input-base text-[11px] py-0.5 w-full bg-slate-800 border-white/10"
+                            className="input-base text-[11px] py-0.5 w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-white/10"
                             value={entry.assignedToName}
                             onChange={async (e) => {
                               const selected = users.find(item => item.name === e.target.value);
@@ -1125,7 +1125,7 @@ export default function ActivitiesCrudPanel({
                     <td className="px-3 py-3 text-xs">
                       {editingId === entry.id ? (
                         <select 
-                          className="input-base text-[11px] py-0.5 w-full bg-slate-800 border-white/10"
+                          className="input-base text-[11px] py-0.5 w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-white/10"
                           value={entry.month} 
                           onChange={(e) => updateLocalEntry(entry.id, { month: e.target.value })}
                         >
@@ -1140,7 +1140,7 @@ export default function ActivitiesCrudPanel({
                     <td className="px-3 py-3">
                       {editingId === entry.id ? (
                         <select
-                          className="input-base text-[11px] py-0.5 w-full bg-slate-800 border-white/10"
+                          className="input-base text-[11px] py-0.5 w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-white/10"
                           value={entry.category}
                           onChange={(e) => {
                             const category = e.target.value;
@@ -1161,7 +1161,7 @@ export default function ActivitiesCrudPanel({
                     <td className="px-3 py-3 text-xs">
                       {editingId === entry.id ? (
                         <select
-                          className="input-base text-[11px] py-0.5 w-full bg-slate-800 border-white/10"
+                          className="input-base text-[11px] py-0.5 w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-white/10"
                           value={entry.scoreBucket}
                           onChange={(e) => {
                             const scoreBucket = e.target.value;

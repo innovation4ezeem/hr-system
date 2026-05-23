@@ -147,24 +147,30 @@ async function finalizeApprovedLeaveRequest(request: LeaveRequest, actor: string
     });
 
     if (attendanceResult.penalty) {
-      const { HRNotificationService } = await import('@/lib/notifications/hrNotificationService');
-      const { listUsers } = await import('@/models/userModel');
-      const users = await listUsers();
-      const employee = users.find(u => u.id === request.employeeId);
-      
-      await HRNotificationService.notifyPenaltyAction({
-        penaltyId: attendanceResult.penalty.id,
-        employeeId: request.employeeId,
-        employeeName: request.employeeName,
-        employeeEmail: employee?.email || `${request.employeeId}@ezeetechnosys.com.my`,
-        penaltyType: attendanceResult.penalty.penaltyTypeCode,
-        incidentDate: attendanceResult.penalty.penaltyDate,
-        amount: String(attendanceResult.penalty.cashAmount || '0'),
-        description: attendanceResult.penalty.reason,
-        action: 'created',
-        actorId: 'system',
-        actorName: 'System Auto-Penalty'
-      });
+      setTimeout(async () => {
+        try {
+          const { HRNotificationService } = await import('@/lib/notifications/hrNotificationService');
+          const { listUsers } = await import('@/models/userModel');
+          const users = await listUsers();
+          const employee = users.find(u => u.id === request.employeeId);
+          
+          await HRNotificationService.notifyPenaltyAction({
+            penaltyId: attendanceResult.penalty!.id,
+            employeeId: request.employeeId,
+            employeeName: request.employeeName,
+            employeeEmail: employee?.email || `${request.employeeId}@ezeetechnosys.com.my`,
+            penaltyType: attendanceResult.penalty!.penaltyTypeCode,
+            incidentDate: attendanceResult.penalty!.penaltyDate,
+            amount: String(attendanceResult.penalty!.cashAmount || '0'),
+            description: attendanceResult.penalty!.reason,
+            action: 'created',
+            actorId: 'system',
+            actorName: 'System Auto-Penalty'
+          });
+        } catch (err) {
+          console.error("Error sending auto-penalty notification:", err);
+        }
+      }, 10);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown attendance impact error';
@@ -370,18 +376,20 @@ export async function submitLeaveRequestController(params: {
   }
 
   if (!params.isManagerSubmittingOwnRequest || !allowManagerSelfApproval) {
-    await notifyApproverOnSubmission({
-      approverId: firstApproverId,
-      employeeId: params.employeeId,
-      employeeName: params.employeeName,
-      leaveType: params.leaveType,
-      startDate: params.startDate,
-      endDate: params.endDate,
-      units: validation.units,
-      requestId: request.id,
-      reason: params.reason,
-      dept: params.dept
-    });
+    setTimeout(() => {
+      notifyApproverOnSubmission({
+        approverId: firstApproverId,
+        employeeId: params.employeeId,
+        employeeName: params.employeeName,
+        leaveType: params.leaveType,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        units: validation.units,
+        requestId: request.id,
+        reason: params.reason || '-',
+        dept: params.dept
+      }).catch(err => console.error("Error sending submission email in background:", err));
+    }, 50);
   }
 
   await insertSystemAuditLog(
@@ -457,18 +465,20 @@ export async function approveLeaveRequestController(
 
   if (nextPending && !isDirectApprover) {
     await setLeaveRequestProgress(requestId, 'pending', nextPending.levelNo, updatedSteps.length);
-    await notifyApproverOnSubmission({
-      approverId: nextPending.approverId,
-      employeeId: request.employeeId,
-      employeeName: request.employeeName,
-      leaveType: request.leaveType,
-      startDate: request.startDate,
-      endDate: request.endDate,
-      units: request.units,
-      requestId,
-      reason: request.reason || '-',
-      dept: request.dept
-    });
+    setTimeout(() => {
+      notifyApproverOnSubmission({
+        approverId: nextPending.approverId,
+        employeeId: request.employeeId,
+        employeeName: request.employeeName,
+        leaveType: request.leaveType,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        units: request.units,
+        requestId,
+        reason: request.reason || '-',
+        dept: request.dept
+      }).catch(err => console.error("Error sending submission email in background:", err));
+    }, 10);
   } else {
     // Finalize if no more steps OR if direct approver took action
     if (isDirectApprover && nextPending) {
@@ -483,8 +493,16 @@ export async function approveLeaveRequestController(
           });
        }
     }
-    await finalizeApprovedLeaveRequest(request, approvedBy);
     await approveLeaveRequest(requestId, approvedBy, comment);
+
+    // Background the finalization of approved leave request (heavy DB/email tasks)
+    setTimeout(async () => {
+      try {
+        await finalizeApprovedLeaveRequest(request, approvedBy);
+      } catch (err) {
+        console.error("Error finalising approved leave request in background:", err);
+      }
+    }, 10);
   }
 
   await insertSystemAuditLog('leave-request', 'approve', approvedBy, {
@@ -496,30 +514,36 @@ export async function approveLeaveRequestController(
   });
 
   if (!nextPending) {
-    const [employee, actorProfile] = await Promise.all([
-      getUser(request.employeeId),
-      getUser(approvedBy)
-    ]);
-    const { listLeaveBalances } = await import('@/models/leaveManagementModel');
-    const balance = (await listLeaveBalances(request.employeeId, new Date().getFullYear())).find(b => b.leaveTypeCode === request.leaveType)?.availableDays || 0;
+    // Send final approval notification to employee (non-blocking in background)
+    setTimeout(async () => {
+      try {
+        const [employee, actorProfile] = await Promise.all([
+          getUser(request.employeeId),
+          getUser(approvedBy)
+        ]);
+        const { listLeaveBalances } = await import('@/models/leaveManagementModel');
+        const balance = (await listLeaveBalances(request.employeeId, new Date().getFullYear())).find(b => b.leaveTypeCode === request.leaveType)?.availableDays || 0;
 
-    // Send final approval notification to employee (non-blocking)
-    void HRNotificationService.notifyLeaveDecision({
-      requestId,
-      employeeId: request.employeeId,
-      employeeName: request.employeeName,
-      employeeEmail: employee?.email || `${request.employeeId}@ezeetechnosys.com.my`,
-      leaveType: request.leaveType,
-      startDate: request.startDate,
-      endDate: request.endDate,
-      units: request.units,
-      status: 'approved',
-      actorId: approvedBy,
-      actorName: actorProfile?.name || approvedBy,
-      reason: comment,
-      dept: request.dept,
-      balance
-    });
+        await HRNotificationService.notifyLeaveDecision({
+          requestId,
+          employeeId: request.employeeId,
+          employeeName: request.employeeName,
+          employeeEmail: employee?.email || `${request.employeeId}@ezeetechnosys.com.my`,
+          leaveType: request.leaveType,
+          startDate: request.startDate,
+          endDate: request.endDate,
+          units: request.units,
+          status: 'approved',
+          actorId: approvedBy,
+          actorName: actorProfile?.name || approvedBy,
+          reason: comment,
+          dept: request.dept,
+          balance
+        });
+      } catch (err) {
+        console.error("Error sending approval email in background:", err);
+      }
+    }, 10);
   }
 
   return getLeaveRequest(requestId);
@@ -599,27 +623,33 @@ export async function rejectLeaveRequestController(
     reason,
   });
 
-  const [employee, actorProfile] = await Promise.all([
-    getUser(request.employeeId),
-    getUser(rejectedBy)
-  ]);
+  // Send rejection notification to employee (non-blocking in background)
+  setTimeout(async () => {
+    try {
+      const [employee, actorProfile] = await Promise.all([
+        getUser(request.employeeId),
+        getUser(rejectedBy)
+      ]);
 
-  // Send rejection notification to employee (non-blocking)
-  void HRNotificationService.notifyLeaveDecision({
-    requestId,
-    employeeId: request.employeeId,
-    employeeName: request.employeeName,
-    employeeEmail: employee?.email || `${request.employeeId}@ezeetechnosys.com.my`,
-    leaveType: request.leaveType,
-    startDate: request.startDate,
-    endDate: request.endDate,
-    units: request.units,
-    status: 'rejected',
-    actorId: rejectedBy,
-    actorName: actorProfile?.name || rejectedBy,
-    reason: reason,
-    dept: request.dept
-  });
+      await HRNotificationService.notifyLeaveDecision({
+        requestId,
+        employeeId: request.employeeId,
+        employeeName: request.employeeName,
+        employeeEmail: employee?.email || `${request.employeeId}@ezeetechnosys.com.my`,
+        leaveType: request.leaveType,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        units: request.units,
+        status: 'rejected',
+        actorId: rejectedBy,
+        actorName: actorProfile?.name || rejectedBy,
+        reason: reason,
+        dept: request.dept
+      });
+    } catch (err) {
+      console.error("Error sending rejection email in background:", err);
+    }
+  }, 10);
 
   return getLeaveRequest(requestId);
 }

@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      await syncActivitiesIntoPerformanceSheet(new Date().getFullYear());
+      syncActivitiesIntoPerformanceSheet(new Date().getFullYear()).catch(err => console.error('Background sync failed:', err));
 
       return NextResponse.json({ success: true });
     }
@@ -303,7 +303,7 @@ export async function POST(request: NextRequest) {
         console.error('Failed to auto-count PLGT Learn/Play:', err);
       }
       
-      await syncActivitiesIntoPerformanceSheet(new Date().getFullYear());
+      syncActivitiesIntoPerformanceSheet(new Date().getFullYear()).catch(err => console.error('Background sync failed:', err));
 
       return NextResponse.json({ evaluation: result });
     }

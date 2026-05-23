@@ -53,6 +53,16 @@ export type LeaveRequest = {
   movedToHistoryAt?: string;
 };
 
+function safeIsoString(val: any): string | undefined {
+  if (!val) return undefined;
+  if (val instanceof Date) return val.toISOString();
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  } catch (e) {}
+  return String(val);
+}
+
 function mapRow(row: any): LeaveRequest {
   return {
     id: row.id,
@@ -69,11 +79,11 @@ function mapRow(row: any): LeaveRequest {
     attachment: row.attachment || undefined,
     status: row.status as LeaveRequestStatus,
     requestedBy: row.requested_by || undefined,
-    requestedAt: row.requested_at ? row.requested_at.toISOString() : '',
+    requestedAt: safeIsoString(row.requested_at) || '',
     approvedBy: row.approved_by || undefined,
-    approvedAt: row.approved_at ? row.approved_at.toISOString() : undefined,
+    approvedAt: safeIsoString(row.approved_at),
     rejectedBy: row.rejected_by || undefined,
-    rejectedAt: row.rejected_at ? row.rejected_at.toISOString() : undefined,
+    rejectedAt: safeIsoString(row.rejected_at),
     rejectionReason: row.rejection_reason || undefined,
     reportingOfficer: row.reporting_officer || undefined,
     currentApprovalLevel: row.current_approval_level !== null ? Number(row.current_approval_level) : undefined,
@@ -81,9 +91,9 @@ function mapRow(row: any): LeaveRequest {
     finalDecisionComment: row.final_decision_comment || undefined,
     cancelReason: row.cancel_reason || undefined,
     cancelledBy: row.cancelled_by || undefined,
-    cancelledAt: row.cancelled_at ? row.cancelled_at.toISOString() : undefined,
+    cancelledAt: safeIsoString(row.cancelled_at),
     employeeStatus: (row.users?.status || row.employee_status || 'active') as any,
-    movedToHistoryAt: row.moved_to_history_at ? row.moved_to_history_at.toISOString() : undefined,
+    movedToHistoryAt: safeIsoString(row.moved_to_history_at),
   };
 }
 

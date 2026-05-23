@@ -150,6 +150,8 @@ export default function SelfEvaluationSection({
   const [tempSections, setTempSections] = useState(general?.evaluationSections || []);
   const [tempShowAttendedCourse, setTempShowAttendedCourse] = useState<boolean>(general?.showAttendedCourse !== false);
   const [tempShowColleagueVoting, setTempShowColleagueVoting] = useState<boolean>(general?.showColleagueVoting !== false);
+  const [formJustSaved, setFormJustSaved] = useState(false);
+  const [votesJustSaved, setVotesJustSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedPeriod, setSelectedPeriod] = useState(propPeriodLabel || currentMonthStr);
@@ -343,6 +345,8 @@ export default function SelfEvaluationSection({
       });
       if (!res.ok) throw new Error('Failed to save votes');
       toast.success('Your colleague votes have been updated and submitted!');
+      setVotesJustSaved(true);
+      setTimeout(() => setVotesJustSaved(false), 3000);
     } catch (err) {
       toast.error('Failed to save votes');
     } finally {
@@ -415,6 +419,8 @@ export default function SelfEvaluationSection({
       setReflection(reflectionStr);
       setSavedAt(new Date().toLocaleString('en-GB'));
       toast.success('Your responses have been successfully saved!');
+      setFormJustSaved(true);
+      setTimeout(() => setFormJustSaved(false), 3000);
     } catch (err) {
       toast.error('Failed to save responses');
     } finally {
@@ -913,10 +919,10 @@ export default function SelfEvaluationSection({
                         <div className="flex justify-end pt-4">
                           <button
                             onClick={handleSaveVotes}
-                            disabled={savingVotes}
-                            className="btn-primary text-xs flex items-center gap-1.5"
+                            disabled={savingVotes || votesJustSaved}
+                            className={`btn-primary text-xs flex items-center gap-1.5 ${votesJustSaved ? '!bg-emerald-500 !text-white' : ''}`}
                           >
-                            {savingVotes ? 'Submitting...' : 'Submit Votes'}
+                            {savingVotes ? 'Submitting...' : votesJustSaved ? '✓ Saved Successfully!' : 'Submit Votes'}
                           </button>
                         </div>
                       </div>
@@ -1168,10 +1174,10 @@ export default function SelfEvaluationSection({
                       <div className="flex justify-end pt-2">
                         <button
                           onClick={() => handleSaveForm()}
-                          disabled={savingForm}
-                          className="btn-primary text-xs flex items-center gap-1.5"
+                          disabled={savingForm || isHodView || formJustSaved}
+                          className={`btn-primary text-xs flex items-center gap-1.5 ${formJustSaved ? '!bg-emerald-500 !text-white' : ''}`}
                         >
-                          {savingForm ? 'Saving...' : 'Save Submission'}
+                          {savingForm ? 'Saving...' : formJustSaved ? '✓ Saved Successfully!' : (savedAt ? 'Update Submission' : 'Save Submission')}
                         </button>
                       </div>
                     )}

@@ -64,36 +64,40 @@ export const emailTemplates = {
   }),
 
   // TRIGGER 1B: Employee submits leave application (To HOD/Admin)
-  leaveSubmittedManager: (d: LeaveDetails, managerName: string) => ({
-    subject: `[Action Required] Leave Request from ${d.employeeName} — ${d.startDate} to ${d.endDate}`,
-    html: `
-      <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
-        <p>Dear ${managerName},</p>
-        <p>A new leave application has been submitted and requires your review.</p>
-        <p><strong>Employee:</strong> ${d.employeeName}<br/>
-        <strong>Department:</strong> ${d.dept || '-'}<br/>
-        <strong>Leave type:</strong> ${d.leaveType}<br/>
-        <strong>From:</strong> ${d.startDate}<br/>
-        <strong>To:</strong> ${d.endDate}<br/>
-        <strong>Total days:</strong> ${d.units} day(s)<br/>
-        <strong>Reason:</strong> ${d.reason}</p>
-        
-        <div style="margin: 25px 0;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/manager-dashboard/leave?requestId=${d.id}&action=approve" 
-             style="background-color: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-right: 10px; display: inline-block;">
-             Approve Request
-          </a>
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/manager-dashboard/leave?requestId=${d.id}&action=reject" 
-             style="background-color: #dc2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-             Reject Request
-          </a>
-        </div>
+  leaveSubmittedManager: (d: LeaveDetails, managerName: string, recipientRole: string = 'hod') => {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4028';
+    const targetPath = recipientRole === 'admin' ? '/admin-panel/leave' : '/manager-dashboard/leave';
+    return {
+      subject: `[Action Required] Leave Request from ${d.employeeName} — ${d.startDate} to ${d.endDate}`,
+      html: `
+        <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+          <p>Dear ${managerName},</p>
+          <p>A new leave application has been submitted and requires your review.</p>
+          <p><strong>Employee:</strong> ${d.employeeName}<br/>
+          <strong>Department:</strong> ${d.dept || '-'}<br/>
+          <strong>Leave type:</strong> ${d.leaveType}<br/>
+          <strong>From:</strong> ${d.startDate}<br/>
+          <strong>To:</strong> ${d.endDate}<br/>
+          <strong>Total days:</strong> ${d.units} day(s)<br/>
+          <strong>Reason:</strong> ${d.reason}</p>
+          
+          <div style="margin: 25px 0;">
+            <a href="${baseUrl}${targetPath}?requestId=${d.id}&action=approve" 
+               style="background-color: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-right: 10px; display: inline-block;">
+               Approve Request
+            </a>
+            <a href="${baseUrl}${targetPath}?requestId=${d.id}&action=reject" 
+               style="background-color: #dc2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+               Reject Request
+            </a>
+          </div>
 
-        <p style="font-size: 13px; color: #64748b;">Note: You will be prompted to log in if you are not already authenticated.</p>
-        <p>Regards,<br/>${COMPANY_NAME} HR System</p>
-      </div>
-    `
-  }),
+          <p style="font-size: 13px; color: #64748b;">Note: You will be prompted to log in if you are not already authenticated.</p>
+          <p>Regards,<br/>${COMPANY_NAME} HR System</p>
+        </div>
+      `
+    };
+  },
 
   // TRIGGER 2A: Leave Approved (To Employee)
   leaveApprovedEmployee: (d: LeaveDetails) => ({

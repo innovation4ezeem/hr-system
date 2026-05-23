@@ -263,7 +263,7 @@ export default function DepartmentsCrudPanel() {
                 }}
               >
                 <option value="">Select HOD...</option>
-                {users.filter(u => u.status === 'active').map(u => (
+                {hodOptions.filter(u => u.status === 'active').map(u => (
                   <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                 ))}
               </select>
@@ -350,7 +350,7 @@ export default function DepartmentsCrudPanel() {
                             }}
                           >
                             <option value="">Unassigned / Pending</option>
-                            {users.filter(u => u.status === 'active').map(u => (
+                            {hodOptions.filter(u => u.status === 'active').map(u => (
                               <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                             ))}
                           </select>

@@ -80,6 +80,9 @@ export default function SystemSettingsPanel() {
   const [archiveModule, setArchiveModule] = useState('all');
   const [archiveFormat, setArchiveFormat] = useState<'json' | 'xlsx' | 'pdf'>('xlsx');
   const [archiveRuns, setArchiveRuns] = useState<Array<{ runId: number; fromYear: number; toYear: number; triggeredBy: string; createdAt: string }>>([]);
+  const [simulatedDate, setSimulatedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [simulating, setSimulating] = useState(false);
   const [archiveRecordsPreview, setArchiveRecordsPreview] = useState<Array<{ module: string; year: number; createdAt: string }>>([]);
   const [viewingArchive, setViewingArchive] = useState<any | null>(null);
   const [auditLogs, setAuditLogs] = useState<Array<{ logId: number; eventType: string; action: string; actor: string; createdAt: string }>>([]);
@@ -279,6 +282,50 @@ export default function SystemSettingsPanel() {
       toast.error(error instanceof Error ? error.message : 'Archive run failed');
     } finally {
       setArchiving(false);
+    }
+  };
+
+  const runSimulation = async (useRealDate: boolean) => {
+    setSimulating(true);
+    setSimulationResult(null);
+    try {
+      const res = await fetch('/api/system-jobs/auto-backup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(useRealDate ? {} : { simulatedDate })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to execute scheduler check');
+      }
+      setSimulationResult(data);
+      if (data.actionTaken === 'warning-reminder') {
+        toast.warning(`Warning reminder sent! Backup due in 3 days.`);
+      } else if (data.actionTaken === 'auto-backup') {
+        toast.success(`Auto-backup completed! Year-End Archive for ${data.today.split('-')[0]} executed.`);
+        // Reload archive runs
+        const runsRes = await fetch('/api/year-end-archive');
+        if (runsRes.ok) {
+          const runsJson = await runsRes.json();
+          if (Array.isArray(runsJson?.runs)) {
+            setArchiveRuns(runsJson.runs.map((r: any) => ({
+              runId: r.runId,
+              fromYear: r.fromYear,
+              toYear: r.toYear,
+              triggeredBy: r.triggeredBy,
+              createdAt: r.createdAt,
+            })));
+          }
+        }
+      } else {
+        toast.info(data.message || 'Scheduler check complete.');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Simulation check failed');
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -596,6 +643,61 @@ export default function SystemSettingsPanel() {
               </div>
               <div className="bg-black/5 rounded p-2 text-[9px] font-medium italic" style={{ color: 'rgb(var(--text-primary))' }}>
                 Latest: {archiveRuns[0]?.fromYear || 'No'} snapshot found
+              </div>
+
+              {/* Simulation Suite */}
+              <div className="pt-2 border-t space-y-2" style={{ borderColor: 'rgba(var(--text-primary), 0.08)' }}>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-blue-500">Auto-Backup Simulation Suite</p>
+                <div className="space-y-2 rounded-lg p-2 border" style={{ background: 'rgba(var(--text-primary), 0.04)', borderColor: 'rgba(var(--text-primary), 0.08)' }}>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[9px] font-semibold" style={{ color: 'rgb(var(--text-secondary))' }}>Simulate Date:</span>
+                    <input
+                      type="date"
+                      className="input-base text-[9px] w-28 p-1"
+                      style={{ background: 'rgb(var(--bg-card))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-primary))' }}
+                      value={simulatedDate}
+                      onChange={e => setSimulatedDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      className="btn-primary text-[9px] flex-1 py-1 px-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                      disabled={simulating}
+                      onClick={() => runSimulation(false)}
+                    >
+                      {simulating ? 'Simulating...' : 'Simulate Tick'}
+                    </button>
+                    <button
+                      className="btn-ghost text-[9px] flex-1 py-1 px-2 border hover:bg-[rgba(var(--text-primary),0.04)]"
+                      style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-primary))' }}
+                      disabled={simulating}
+                      onClick={() => runSimulation(true)}
+                    >
+                      Real Tick
+                    </button>
+                  </div>
+                  {simulationResult && (
+                    <div className="p-1.5 rounded text-[9px] space-y-1 font-medium animate-in fade-in duration-200" style={{ background: 'rgba(var(--text-primary), 0.06)' }}>
+                      <div className="flex justify-between border-b pb-1" style={{ borderColor: 'rgba(var(--text-primary), 0.06)' }}>
+                        <span style={{ color: 'rgb(var(--text-secondary))' }}>Scheduled:</span>
+                        <span style={{ color: 'rgb(var(--text-primary))' }}>{simulationResult.scheduledDate}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1" style={{ borderColor: 'rgba(var(--text-primary), 0.06)' }}>
+                        <span style={{ color: 'rgb(var(--text-secondary))' }}>Days to Target:</span>
+                        <span className={simulationResult.diffDays === 0 ? "text-green-500 font-bold" : simulationResult.diffDays === 3 ? "text-amber-500 font-bold" : ""} style={simulationResult.diffDays !== 0 && simulationResult.diffDays !== 3 ? { color: 'rgb(var(--text-primary))' } : undefined}>
+                          {simulationResult.diffDays} days
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1" style={{ borderColor: 'rgba(var(--text-primary), 0.06)' }}>
+                        <span style={{ color: 'rgb(var(--text-secondary))' }}>Action:</span>
+                        <span className="font-bold text-blue-500 uppercase">{simulationResult.actionTaken}</span>
+                      </div>
+                      <div className="text-[8px] leading-relaxed break-words" style={{ color: 'rgb(var(--text-secondary))' }}>
+                        {simulationResult.message}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

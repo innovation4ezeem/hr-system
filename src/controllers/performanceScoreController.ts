@@ -88,7 +88,12 @@ export async function getPerformanceSheetController(year: number, employeeIds: s
   );
 }
 
-export async function savePerformanceSheetController(year: number, payload: SheetPayload) {
+export async function savePerformanceSheetController(
+  year: number, 
+  payload: SheetPayload, 
+  targetEmployeeId?: string, 
+  targetMonth?: string
+) {
   const safeYear = Number.isInteger(year) ? year : new Date().getFullYear();
 
   const record: PerformanceSheetRecord = {
@@ -101,41 +106,50 @@ export async function savePerformanceSheetController(year: number, payload: Shee
   await upsertPerformanceSheet(record);
   await syncSheetIntoActivities(safeYear, payload);
   // NEW: Trigger deep sync to update performance_inputs and performance_scores
-  await syncSheetToPerformanceResults(safeYear, payload);
+  await syncSheetToPerformanceResults(safeYear, payload, targetEmployeeId, targetMonth);
 }
 
-async function syncSheetToPerformanceResults(year: number, payload: SheetPayload) {
+async function syncSheetToPerformanceResults(
+  year: number, 
+  payload: SheetPayload, 
+  targetEmployeeId?: string, 
+  targetMonth?: string
+) {
   const { upsertPerformanceInput, calculateAndSavePerformanceScore } = await import('@/models/performanceManagementModel');
   const { listUsers } = await import('@/models/userModel');
   const users = await listUsers();
-
+ 
   const monthNames = [...PERFORMANCE_MONTHS];
-
+ 
   for (const [employeeId, cells] of Object.entries(payload.cellsByEmployee)) {
+    if (targetEmployeeId && employeeId !== targetEmployeeId) continue;
+ 
     const user = users.find(u => u.id === employeeId);
     if (!user) continue;
-
+ 
     for (let mIdx = 0; mIdx < monthNames.length; mIdx++) {
       const month = monthNames[mIdx];
+      if (targetMonth && month !== targetMonth) continue;
+ 
       const periodNo = mIdx + 1;
-
+ 
       // Extract values from cells for this specific month
       const kpi = Number(cells[`KPI / OKR::${month}`] || cells[`KPI::${month}`] || 0);
       const tasks = Number(cells[`Tasks Based::${month}`] || 0);
       const quality = Number(cells[`Quality::${month}`] || 0);
-
+ 
       const participation: Record<string, number> = {
         PLAY_ATTENDANCE: Number(cells[`PLAY Attendance::${month}`] || 0),
         PLAY_WINNER: Number(cells[`PLAY Winner::${month}`] || 0),
-        LEARN_ATTENDANCE: Number(cells[`LEARN Attendance::${month}`] || 0),
         HCM_STICKERS: Number(cells[`HCM Sticker::${month}`] || cells[`HCM sticker::${month}`] || 0),
+        LEARN_ATTENDANCE: Number(cells[`LEARN Attendance::${month}`] || 0),
       };
-
+ 
       const popularity: Record<string, number> = {
         GRATITUDE_STICKER: Number(cells[`Gratitude sticker::${month}`] || 0),
         VOTING_FORM: Number(cells[`Voting form::${month}`] || 0),
       };
-
+ 
       try {
         // 1. Update the Performance Input table (source for calculations)
         await upsertPerformanceInput({
@@ -155,7 +169,7 @@ async function syncSheetToPerformanceResults(year: number, payload: SheetPayload
           popularity,
           updatedBy: 'System Sync',
         });
-
+ 
         // 2. Trigger calculation to update the performance_scores table (source for Heatmap)
         await calculateAndSavePerformanceScore({
           employeeId,

@@ -66,12 +66,7 @@ export default function EmployeeProfileHeader({ externalData }: { externalData?:
                 {employee?.yearsService}y {employee?.monthsService}m tenure
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Icon name="HomeIcon" size={14} className="text-emerald-400" />
-              <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                WFH: <span style={{ color: 'rgb(52 211 153)' }}>{employee?.wfhUsed}/{employee?.wfhLimit}</span> days used this month
-              </span>
-            </div>
+
           </div>
         </div>
 
