@@ -204,6 +204,7 @@ export default function SelfEvaluationSection({
   }, [selectedYear]);
 
   const loadData = async () => {
+    if (!userId) return;
     try {
       setLoading(true);
       

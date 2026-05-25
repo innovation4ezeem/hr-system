@@ -46,6 +46,17 @@ export default function LoginClient() {
     }
   }, [searchParams]);
 
+  // Load saved email if Remember Me was previously checked
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('ezeem_remember_email');
+      if (savedEmail) {
+        loginForm.setValue('email', savedEmail);
+        loginForm.setValue('rememberMe', true);
+      }
+    }
+  }, [loginForm]);
+
   const handleLogin = async (data: LoginForm) => {
     setIsLoading(true);
     try {
@@ -59,6 +70,13 @@ export default function LoginClient() {
 
       if (!response.ok) {
         throw new Error(result.error || 'Login failed');
+      }
+
+      // Handle remember me client side prefilling
+      if (data.rememberMe) {
+        localStorage.setItem('ezeem_remember_email', data.email);
+      } else {
+        localStorage.removeItem('ezeem_remember_email');
       }
 
       // Sync identity cookies from response

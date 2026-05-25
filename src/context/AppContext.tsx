@@ -123,6 +123,7 @@ export function AppProvider({ children, bootstrap }: { children: ReactNode; boot
 
     // Initial theme load from DB
     const loadTheme = async () => {
+      if (!finalUserId) return;
       try {
         const res = await fetch(`/api/users/theme?userId=${encodeURIComponent(finalUserId)}`);
         const data = await res.json();
