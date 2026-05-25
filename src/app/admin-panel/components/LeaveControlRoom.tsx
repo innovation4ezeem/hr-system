@@ -1099,7 +1099,17 @@ export default function LeaveControlRoom() {
               </thead>
               <tbody className="divide-y divide-white/[0.05]">
                 {filteredRequests
+                  .filter(r => {
+                    if (!historySearchTerm) return true;
+                    const term = historySearchTerm.toLowerCase();
+                    return (
+                      r.employee.toLowerCase().includes(term) ||
+                      r.type.toLowerCase().includes(term) ||
+                      r.status.toLowerCase().includes(term)
+                    );
+                  })
                   .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+                  .slice(0, 5)
                   .map(r => (
                     <tr key={r.id} className="hover:bg-white/[0.01] transition-colors">
                       <td className="px-4 py-2 font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
@@ -1131,7 +1141,7 @@ export default function LeaveControlRoom() {
                       </td>
                     </tr>
                   ))}
-                {requests.filter(r => {
+                 {filteredRequests.filter(r => {
                   if (!historySearchTerm) return true;
                   const term = historySearchTerm.toLowerCase();
                   return (
@@ -1161,7 +1171,7 @@ export default function LeaveControlRoom() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr style={{ background: 'rgb(var(--bg-elevated))' }}>
-                {['Person', 'AL', 'AL Carry', 'MC', 'REWARD', 'REPLACE', 'WFH', 'CS', 'UNPAID', 'MATER', 'PATER', 'ADDIT', 'WFH Used', 'Actions'].map(h => (
+                {['Person', 'AL', 'AL Carry', 'MC', 'REWARD', 'REPLACE', 'WFH', 'COM', 'UNPAID', 'MATER', 'PATER', 'ADDIT', 'Actions'].map(h => (
                   <th 
                     key={h} 
                     className="px-3 py-2 text-left text-xs whitespace-nowrap sticky top-0 z-20" 
@@ -1195,8 +1205,8 @@ export default function LeaveControlRoom() {
                       <p style={{ color: 'rgb(var(--text-primary))' }}>{decodeURIComponent(p.name)}</p>
                       <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>{p.id} • {p.dept}</p>
                     </td>
-                    {(['al', 'alCarryForward', 'mc', 'reward', 'replacement', 'wfh', 'cs', 'unpaid', 'maternity', 'paternity', 'additional', 'wfhUsed'] as Array<keyof EmployeeLeaveProfile['balances']>).map(field => {
-                      const isToggleableType = !['alCarryForward', 'wfhUsed'].includes(field);
+                    {(['al', 'alCarryForward', 'mc', 'reward', 'replacement', 'wfh', 'cs', 'unpaid', 'maternity', 'paternity', 'additional'] as Array<keyof EmployeeLeaveProfile['balances']>).map(field => {
+                      const isToggleableType = field !== 'alCarryForward';
                       const isEnabled = p.balances[field] >= 0;
 
                       return (

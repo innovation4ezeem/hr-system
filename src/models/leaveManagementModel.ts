@@ -552,6 +552,8 @@ export async function ensureBalancesForEmployee(employeeId: string, year: number
 
   const existingMap = new Map((existingBalances || []).map(b => [b.leave_type_code, b]));
   
+  const params: any[] = [];
+  
   for (const leaveType of leaveTypes) {
     const overrideDays = overrides.get(leaveType.code);
     
@@ -574,32 +576,37 @@ export async function ensureBalancesForEmployee(employeeId: string, year: number
     const minAllowedDays = leaveType.allowNegativeBalance ? -leaveType.maxNegativeDays : 0;
     const existing = existingMap.get(leaveType.code);
     const usedDays = approvedMap.get(leaveType.code) || 0;
+    const adjustedDays = existing ? Number(existing.adjusted_days || 0) : 0;
 
-    await prisma.leave_balances.upsert({
-      where: {
-        id: existing?.id || `LB-${employeeId}-${leaveType.code}-${year}`
-      },
-      update: {
-        opening_days: openingDays,
-        carry_forward_days: carryForwardDays,
-        min_allowed_days: minAllowedDays,
-        used_days: usedDays,
-        updated_at: new Date()
-      },
-      create: {
-        id: `LB-${employeeId}-${leaveType.code}-${year}`,
-        employee_id: employeeId,
-        leave_type_code: leaveType.code,
-        balance_year: year,
-        opening_days: openingDays,
-        carry_forward_days: carryForwardDays,
-        adjusted_days: 0,
-        used_days: usedDays,
-        min_allowed_days: minAllowedDays,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    });
+    const id = existing?.id || `LB-${employeeId}-${leaveType.code}-${year}`;
+
+    params.push(
+      id,
+      employeeId,
+      leaveType.code,
+      year,
+      openingDays,
+      carryForwardDays,
+      adjustedDays,
+      usedDays,
+      minAllowedDays
+    );
+  }
+
+  if (params.length > 0) {
+    const placeholders = leaveTypes.map(() => `(?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`).join(', ');
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO leave_balances
+        (id, employee_id, leave_type_code, balance_year, opening_days, carry_forward_days, adjusted_days, used_days, min_allowed_days, created_at, updated_at)
+      VALUES 
+        ${placeholders}
+      ON DUPLICATE KEY UPDATE
+        opening_days = VALUES(opening_days),
+        carry_forward_days = VALUES(carry_forward_days),
+        min_allowed_days = VALUES(min_allowed_days),
+        used_days = VALUES(used_days),
+        updated_at = NOW()
+    `, ...params);
   }
 }
 
@@ -1415,29 +1422,33 @@ export async function upsertLeaveEntitlementOverride(record: LeaveEntitlementOve
 export async function upsertManyLeaveEntitlementOverrides(records: LeaveEntitlementOverrideRecord[]) {
   if (records.length === 0) return;
 
-  // 1. Perform all upserts directly in DB
+  // 1. Perform all overrides upserts in a single bulk database query!
+  const params: any[] = [];
   for (const record of records) {
-    await prisma.employee_leave_entitlements.upsert({
-      where: { id: record.id || `OVER-${record.employeeId}-${record.leaveTypeCode}-${record.year}` },
-      update: {
-        override_days: record.overrideDays,
-        override_reason: record.overrideReason || null,
-        overridden_by: record.overriddenBy || null,
-        updated_at: new Date()
-      },
-      create: {
-        id: `OVER-${record.employeeId}-${record.leaveTypeCode}-${record.year}`,
-        employee_id: record.employeeId,
-        leave_type_code: record.leaveTypeCode,
-        balance_year: record.year,
-        override_days: record.overrideDays,
-        override_reason: record.overrideReason || null,
-        overridden_by: record.overriddenBy || null,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    });
+    const id = record.id || `OVER-${record.employeeId}-${record.leaveTypeCode}-${record.year}`;
+    params.push(
+      id,
+      record.employeeId,
+      record.leaveTypeCode,
+      record.year,
+      record.overrideDays,
+      record.overrideReason || null,
+      record.overriddenBy || null
+    );
   }
+
+  const placeholders = records.map(() => `(?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`).join(', ');
+  await prisma.$executeRawUnsafe(`
+    INSERT INTO employee_leave_entitlements 
+      (id, employee_id, leave_type_code, balance_year, override_days, override_reason, overridden_by, created_at, updated_at)
+    VALUES 
+      ${placeholders}
+    ON DUPLICATE KEY UPDATE
+      override_days = VALUES(override_days),
+      override_reason = VALUES(override_reason),
+      overridden_by = VALUES(overridden_by),
+      updated_at = NOW()
+  `, ...params);
 
   // 2. Synchronize balances for each unique employee-year pair ONCE
   const uniqueKeys = new Set<string>();
@@ -1451,8 +1462,17 @@ export async function upsertManyLeaveEntitlementOverrides(records: LeaveEntitlem
     }
   }
 
+  // Optimize: Pre-fetch active leaveTypes and system settings ONCE to pass to ensuring job loops
+  const leaveTypes = await listLeaveTypes(true);
+  const { getSystemSettings } = await import('./systemSettingsModel');
+  const settings = await getSystemSettings();
+
   for (const job of jobs) {
-    await ensureBalancesForEmployee(job.employeeId, job.year, { skipServiceSync: true });
+    await ensureBalancesForEmployee(job.employeeId, job.year, { 
+      leaveTypes,
+      settings,
+      skipServiceSync: true 
+    });
   }
 }
 
