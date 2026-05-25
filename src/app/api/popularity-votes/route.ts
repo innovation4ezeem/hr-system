@@ -100,7 +100,9 @@ export async function POST(request: NextRequest) {
     const monthName = monthParts[0] || 'Jan';
     const yearStr = monthParts[1] || new Date().getFullYear().toString();
 
-    await createActivityScoreController({
+    // Run the heavy scoring updates and notification triggers in the background 
+    // so the vote submission is near-instant for the user.
+    createActivityScoreController({
       id: vote.id,
       activityName: `Live Popularity Vote from ${voter.name}`,
       date: new Date().toISOString().split('T')[0],
@@ -114,6 +116,8 @@ export async function POST(request: NextRequest) {
       sourceFolder: 'Live Popularity',
       updatedBy: voter.name,
       description: 'Awarded via Live Popularity Dashboard'
+    }).catch(err => {
+      console.error('[popularity-votes] Background score synchronization failed:', err);
     });
 
     return NextResponse.json({ success: true, vote });
