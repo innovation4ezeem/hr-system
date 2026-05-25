@@ -73,6 +73,7 @@ export default function EmployeeLeaveHistoryPanel({ employeeId, onAction }: Empl
 
   useEffect(() => {
     const fetchYears = async () => {
+      if (!currentEmployeeId) return;
       try {
         const res = await fetch(`/api/leave-requests?mode=available-years&employeeId=${currentEmployeeId}`, { headers: authHeaders });
         const data = await res.json();
@@ -87,6 +88,7 @@ export default function EmployeeLeaveHistoryPanel({ employeeId, onAction }: Empl
   }, [currentEmployeeId, authHeaders]);
 
   const loadRequests = async () => {
+    if (!currentEmployeeId) return;
     try {
       setLoading(true);
       const statusParam = selectedStatus === 'All' ? '' : selectedStatus;
