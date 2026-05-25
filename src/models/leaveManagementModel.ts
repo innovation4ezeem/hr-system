@@ -790,6 +790,11 @@ export async function listEligibleLeaveTypes(
   const balanceMap = new Map(balances.map((item) => [item.leaveTypeCode, item]));
 
   return leaveTypes
+    .filter((lt) => {
+      const b = balanceMap.get(lt.code);
+      if (b && Number(b.openingDays) < 0) return false;
+      return true;
+    })
     .map((leaveType) => ({
       ...leaveType,
       availableDays: balanceMap.get(leaveType.code)?.availableDays ?? 0,

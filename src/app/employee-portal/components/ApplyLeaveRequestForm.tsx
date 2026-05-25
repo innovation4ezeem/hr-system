@@ -195,6 +195,13 @@ export default function ApplyLeaveRequestForm() {
     return () => { cancelled = true; };
   }, [authHeaders, employeeId, requestYear]);
 
+  // Ensure selected type is always an eligible option if current one gets disabled/filtered
+  useEffect(() => {
+    if (leaveTypes.length > 0 && !leaveTypes.some(t => t.code === form.typeCode)) {
+      setForm(prev => ({ ...prev, typeCode: leaveTypes[0].code }));
+    }
+  }, [leaveTypes, form.typeCode]);
+
   // Live validation on every form change
   useEffect(() => {
     let cancelled = false;

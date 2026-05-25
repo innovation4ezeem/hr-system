@@ -225,6 +225,7 @@ export default function LeaveControlRoom() {
   const [histories, setHistories] = useState<HistoryRow[]>(initialHistory);
   const [profiles, setProfiles] = useState<EmployeeLeaveProfile[]>(initialProfiles);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const editingRowRef = useRef<HTMLTableRowElement | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [selectedOverrideIds, setSelectedOverrideIds] = useState<Set<string>>(new Set());
   const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false);
@@ -254,6 +255,24 @@ export default function LeaveControlRoom() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isEmployeeDropdownOpen]);
+
+  useEffect(() => {
+    if (!editingProfileId) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (saveState === 'saving') return;
+      
+      // If clicked target is outside the editing row and still exists in DOM, save automatically
+      if (editingRowRef.current && !editingRowRef.current.contains(e.target as Node) && document.body.contains(e.target as Node)) {
+        void saveProfileEdit(editingProfileId);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [editingProfileId, saveState, profiles]);
 
   // Filters
   const [filterYear, setFilterYear] = useState<string>('All');
@@ -1151,26 +1170,86 @@ export default function LeaveControlRoom() {
               {filteredProfiles.map(p => {
                 const editing = editingProfileId === p.id;
                 return (
-                  <tr key={p.id} style={{ borderTop: '1px solid rgb(var(--border))' }}>
+                  <tr 
+                    key={p.id} 
+                    ref={editing ? editingRowRef : null}
+                    onKeyDown={editing ? (e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void saveProfileEdit(p.id);
+                      }
+                    } : undefined}
+                    style={{ borderTop: '1px solid rgb(var(--border))' }}
+                  >
                     <td className="px-3 py-2">
                       <p style={{ color: 'rgb(var(--text-primary))' }}>{decodeURIComponent(p.name)}</p>
                       <p className="text-xs" style={{ color: 'rgb(var(--text-muted))' }}>{p.id} • {p.dept}</p>
                     </td>
-                    {(['al', 'alCarryForward', 'mc', 'reward', 'replacement', 'wfh', 'cs', 'unpaid', 'maternity', 'paternity', 'additional', 'wfhUsed'] as Array<keyof EmployeeLeaveProfile['balances']>).map(field => (
-                      <td key={`${p.id}-${field}`} className="px-3 py-2 text-center">
-                        {editing ? (
-                          <input
-                            type="number"
-                            value={p.balances[field]}
-                            onChange={e => updateBalance(p.id, field, Number(e.target.value))}
-                            className="input-base text-xs"
-                            style={{ padding: '4px 8px', width: 60 }}
-                          />
-                        ) : (
-                          <span style={{ color: 'rgb(var(--text-secondary))' }}>{p.balances[field]}</span>
-                        )}
-                      </td>
-                    ))}
+                    {(['al', 'alCarryForward', 'mc', 'reward', 'replacement', 'wfh', 'cs', 'unpaid', 'maternity', 'paternity', 'additional', 'wfhUsed'] as Array<keyof EmployeeLeaveProfile['balances']>).map(field => {
+                      const isToggleableType = !['alCarryForward', 'wfhUsed'].includes(field);
+                      const isEnabled = p.balances[field] >= 0;
+
+                      return (
+                        <td key={`${p.id}-${field}`} className="px-3 py-2 text-center">
+                          {editing ? (
+                            isToggleableType ? (
+                              <div className="flex items-center justify-center gap-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isEnabled}
+                                  onChange={e => {
+                                    const checked = e.target.checked;
+                                    if (checked) {
+                                      const defaultDays: Record<string, number> = {
+                                        al: 8,
+                                        mc: 14,
+                                        reward: 0,
+                                        replacement: 12,
+                                        wfh: 4,
+                                        cs: 3,
+                                        unpaid: 10,
+                                        maternity: 90,
+                                        paternity: 3,
+                                        additional: 4
+                                      };
+                                      updateBalance(p.id, field, defaultDays[field] ?? 0);
+                                    } else {
+                                      updateBalance(p.id, field, -1);
+                                    }
+                                  }}
+                                  className="rounded cursor-pointer text-blue-500 scale-90"
+                                />
+                                {isEnabled ? (
+                                  <input
+                                    type="number"
+                                    value={p.balances[field]}
+                                    onChange={e => updateBalance(p.id, field, Number(e.target.value))}
+                                    className="input-base text-xs text-center"
+                                    style={{ padding: '2px 4px', width: 45, display: 'inline-block' }}
+                                  />
+                                ) : (
+                                  <span className="text-[10px] text-red-500 dark:text-red-400 font-bold bg-red-500/10 px-1 py-0.5 rounded select-none">N/A</span>
+                                )}
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                value={p.balances[field]}
+                                onChange={e => updateBalance(p.id, field, Number(e.target.value))}
+                                className="input-base text-xs text-center"
+                                style={{ padding: '4px 8px', width: 60 }}
+                              />
+                            )
+                          ) : (
+                            isToggleableType && !isEnabled ? (
+                              <span className="text-[10px] text-slate-500 font-bold bg-slate-500/10 px-1.5 py-0.5 rounded opacity-40 select-none">N/A</span>
+                            ) : (
+                              <span style={{ color: 'rgb(var(--text-secondary))' }}>{p.balances[field]}</span>
+                            )
+                          )}
+                        </td>
+                      );
+                    })}
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1">
                         {editing ? (
