@@ -12,6 +12,7 @@ import { Toaster } from 'sonner';
 
 import ProgressBar from '@/components/ui/ProgressBar';
 import { Suspense } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export default async function RootLayout({
 	children,
@@ -49,6 +50,7 @@ export default async function RootLayout({
 					{children}
 					<Toaster richColors position="top-right" closeButton />
 				</AppProvider>
+				<SpeedInsights />
 			</body>
 		</html>
 	);
