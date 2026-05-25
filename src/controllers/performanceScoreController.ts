@@ -104,7 +104,7 @@ export async function savePerformanceSheetController(
   };
 
   await upsertPerformanceSheet(record);
-  await syncSheetIntoActivities(safeYear, payload);
+  await syncSheetIntoActivities(safeYear, payload, targetEmployeeId, targetMonth);
   // NEW: Trigger deep sync to update performance_inputs and performance_scores
   await syncSheetToPerformanceResults(safeYear, payload, targetEmployeeId, targetMonth);
 }

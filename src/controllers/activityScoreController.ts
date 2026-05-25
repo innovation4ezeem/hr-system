@@ -589,8 +589,13 @@ export async function cleanupSystemAdjustments(year: number) {
   }
 }
 
-export async function syncSheetIntoActivities(year: number, sheet: SheetPayload) {
-  console.log(`[Sync] Starting worksheet sync for year ${year}...`);
+export async function syncSheetIntoActivities(
+  year: number, 
+  sheet: SheetPayload,
+  targetEmployeeId?: string,
+  targetMonth?: string
+) {
+  console.log(`[Sync] Starting worksheet sync for year ${year} (employee: ${targetEmployeeId || 'ALL'}, month: ${targetMonth || 'ALL'})...`);
   const allEntries = await listActivityScores({ year });
   const users = await listUsers();
   
@@ -630,12 +635,15 @@ export async function syncSheetIntoActivities(year: number, sheet: SheetPayload)
   const promises: Promise<any>[] = [];
 
   for (const [employeeId, cells] of Object.entries(sheet.cellsByEmployee)) {
+    if (targetEmployeeId && employeeId !== targetEmployeeId) continue;
     const user = users.find(u => u.id === employeeId);
     if (!user) continue;
 
     for (const [cellKey, targetScore] of Object.entries(cells)) {
       const [bucket, column] = cellKey.split('::');
       if (!ACTIVITY_SCORE_BUCKETS.includes(bucket as any)) continue;
+
+      if (targetMonth && normalizeToColumn(targetMonth, sheet.columns) !== column) continue;
 
       const key = `${employeeId}::${bucket}::${column}`;
       const naturalSum = naturalSums[key] || 0;
