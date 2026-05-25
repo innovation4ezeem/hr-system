@@ -528,6 +528,7 @@ export class HRNotificationService {
     dept: string;
     joinDate: string;
     status: string;
+    tempPassword?: string;
   }) {
     try {
       const employeeName = safeDecode(params.employeeName);
@@ -540,7 +541,8 @@ export class HRNotificationService {
         dept: params.dept,
         joinDate: params.joinDate,
         status: params.status,
-        timestamp
+        timestamp,
+        tempPassword: params.tempPassword
       });
 
       await sendDualNotification({
@@ -569,6 +571,7 @@ export class HRNotificationService {
     employeeId: string;
     employeeName: string;
     employeeEmail: string;
+    tempPassword?: string;
   }) {
     try {
       const employeeName = safeDecode(params.employeeName);
@@ -577,7 +580,8 @@ export class HRNotificationService {
       const tpl = emailTemplates.accountActivated({
         employeeName,
         email: params.employeeEmail,
-        timestamp
+        timestamp,
+        tempPassword: params.tempPassword
       });
 
       await sendDualNotification({

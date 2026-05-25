@@ -75,7 +75,7 @@ export default function LoginClient() {
       const role = result.user?.db_role || 'employee';
       const searchParams = new URLSearchParams(window.location.search);
       const customRedirect = searchParams.get('redirect');
-      const redirect = customRedirect ? decodeURIComponent(customRedirect) : (role === 'admin' ? '/admin-panel' : role === 'hod' ? '/manager-dashboard' : '/employee-portal');
+      const redirect = customRedirect ? decodeURIComponent(customRedirect) : (role === 'admin' ? '/admin-panel' : (role === 'hod' || role === 'director') ? '/manager-dashboard' : '/employee-portal');
 
       setTimeout(() => router.push(redirect), 800);
     } catch (error) {

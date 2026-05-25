@@ -211,7 +211,7 @@ export default function DepartmentsCrudPanel() {
   };
 
 
-  const hodOptions = users.filter(u => u.role?.toLowerCase() === 'hod' || u.role?.toLowerCase() === 'admin');
+  const hodOptions = users.filter(u => u.role?.toLowerCase() === 'hod' || u.role?.toLowerCase() === 'admin' || u.role?.toLowerCase() === 'director');
 
   return (
     <div className="space-y-6">

@@ -1233,6 +1233,7 @@ export async function listTeamLeaveCalendar(params: { month: string; department?
     units: Number(row.units),
     dept: row.leave_requests.dept || 'Unknown',
     employeeStatus: row.leave_requests.users.status || 'active',
+    session: row.leave_requests.session || 'FULL',
   }));
 }
 

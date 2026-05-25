@@ -14,6 +14,7 @@ type CalendarEntry = {
   endDate: string;
   units: number;
   employeeStatus?: string;
+  session?: string;
 };
 
 const MONTH_NAMES = [
@@ -269,7 +270,10 @@ export default function TeamLeaveCalendarPanel() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold truncate" style={{ color: 'rgb(var(--text-primary))' }}>{e.employeeName}</p>
-                      <p className="text-[10px]" style={{ color: 'rgb(var(--text-muted))' }}>{e.leaveTypeCode} · {e.startDate} to {e.endDate}</p>
+                      <p className="text-[10px]" style={{ color: 'rgb(var(--text-muted))' }}>
+                        {e.leaveTypeCode} · {e.startDate} to {e.endDate}
+                        {e.session && e.session !== 'FULL' ? ` · ${e.session === 'AM' ? 'Morning (AM)' : 'Afternoon (PM)'}` : ''}
+                      </p>
                     </div>
                   </div>
                 ))

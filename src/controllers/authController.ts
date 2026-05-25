@@ -105,7 +105,7 @@ export async function adminCreateUserController(payload: {
   dept: string;
   role: ApiRole;
 }) {
-  const hashedPassword = await bcrypt.hash(payload.password || `Ezeem@${Date.now()}`, 10);
+  const tempPassword = payload.password || Math.random().toString(36).slice(-8).toUpperCase();
 
   // Insert into local users table with active status
   try {
@@ -117,7 +117,8 @@ export async function adminCreateUserController(payload: {
       dept: payload.dept,
       status: 'active',
       joinDate: new Date().toLocaleDateString('en-GB'),
-      password: hashedPassword
+      password: tempPassword,
+      sendNotification: true
     });
 
     return {

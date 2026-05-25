@@ -79,9 +79,10 @@ export async function createDepartmentController(payload: Partial<DepartmentReco
     // 1. Update the HOD user record itself
     const hodUser = users.find(u => u.id === record.hodId);
     if (hodUser) {
+      const nextRole = (hodUser.role === 'admin' || hodUser.role === 'director') ? hodUser.role : 'hod';
       await upsertUser({ 
         ...hodUser, 
-        role: 'hod', 
+        role: nextRole, 
         dept: record.name, 
         departmentId: record.id,
         reportsToId: null 
@@ -123,9 +124,10 @@ export async function updateDepartmentController(id: string, payload: Partial<De
     // 1. Update the NEW HOD user record
     const newHodUser = users.find(u => u.id === record.hodId);
     if (newHodUser) {
+      const nextRole = (newHodUser.role === 'admin' || newHodUser.role === 'director') ? newHodUser.role : 'hod';
       await upsertUser({ 
         ...newHodUser, 
-        role: newHodUser.role === 'admin' ? 'admin' : 'hod', 
+        role: nextRole, 
         dept: record.name, 
         departmentId: record.id,
         reportsToId: null 

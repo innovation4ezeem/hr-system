@@ -257,7 +257,7 @@ export const emailTemplates = {
   }),
 
   // TRIGGER 7: Welcome New User (To Employee)
-  welcomeNewUser: (d: { employeeName: string; email: string; role: string; dept: string; joinDate: string; status: string; timestamp: string }) => ({
+  welcomeNewUser: (d: { employeeName: string; email: string; role: string; dept: string; joinDate: string; status: string; timestamp: string; tempPassword?: string }) => ({
     subject: `Welcome to ${COMPANY_NAME} HR System! — Your Account has been Created`,
     html: `
       <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
@@ -281,7 +281,17 @@ export const emailTemplates = {
         <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4028'}/">${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4028'}/</a></p>
         
         ${d.status !== 'pending'
-        ? `<p>If you were not provided with a temporary password, please use the <strong>"Forgot Password"</strong> link on the login page to set one.</p>`
+        ? `
+          <div style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
+            ${d.tempPassword ? `
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #64748b; font-weight: 500;">Your Temporary Password:</p>
+            <p style="margin: 0; font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: 800; letter-spacing: 3px; color: #0f172a; background: #fff; padding: 10px 20px; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block;">${d.tempPassword}</p>
+            <p style="margin: 15px 0 0 0; font-size: 12px; color: #94a3b8; line-height: 1.4;">Use this password to log in for the first time.<br/>You can change it later in your profile settings.</p>
+            ` : `
+            <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.4;">If you were not provided with a temporary password, please use the <strong>"Forgot Password"</strong> link on the login page to set one.</p>
+            `}
+          </div>
+        `
         : ''
       }
         
@@ -291,7 +301,7 @@ export const emailTemplates = {
   }),
 
   // TRIGGER 8: Account Activated (To Employee)
-  accountActivated: (d: { employeeName: string; email: string; timestamp: string }) => ({
+  accountActivated: (d: { employeeName: string; email: string; timestamp: string; tempPassword?: string }) => ({
     subject: `Your ${COMPANY_NAME} Account has been Activated!`,
     html: `
       <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
@@ -310,7 +320,15 @@ export const emailTemplates = {
            Sign In to Portal
         </a></p>
 
-        <p>If you don't have your password yet, please use the "Forgot Password" link on the login screen.</p>
+        <div style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
+          ${d.tempPassword ? `
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #64748b; font-weight: 500;">Your Temporary Password:</p>
+          <p style="margin: 0; font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: 800; letter-spacing: 3px; color: #0f172a; background: #fff; padding: 10px 20px; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block;">${d.tempPassword}</p>
+          <p style="margin: 15px 0 0 0; font-size: 12px; color: #94a3b8; line-height: 1.4;">Use this password to sign in immediately.<br/>You can change it later in your profile settings.</p>
+          ` : `
+          <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.4;">If you don't have your password yet, please use the <strong>"Forgot Password"</strong> link on the login screen.</p>
+          `}
+        </div>
         <p>Regards,<br/>${COMPANY_NAME} HR System</p>
       </div>
     `

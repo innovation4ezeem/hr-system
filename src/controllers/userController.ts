@@ -95,6 +95,24 @@ export async function createUserController(payload: Partial<UserRecord> & { send
     password: payload.password || null,
   };
 
+  let tempPasswordForEmail: string | undefined = undefined;
+
+  // Capture or generate temporary password if status is active
+  if (record.status === 'active') {
+    if (payload.password && !payload.password.startsWith('$2a$') && !payload.password.startsWith('$2b$')) {
+      tempPasswordForEmail = payload.password;
+    } else if (!record.password) {
+      const generatedTemp = Math.random().toString(36).slice(-8).toUpperCase();
+      tempPasswordForEmail = generatedTemp;
+      record.password = generatedTemp;
+    }
+  } else {
+    // If pending, and a plain-text password is provided, capture it as temp password
+    if (payload.password && !payload.password.startsWith('$2a$') && !payload.password.startsWith('$2b$')) {
+      tempPasswordForEmail = payload.password;
+    }
+  }
+
   // Ensure password is hashed if provided in plain text
   if (record.password && !record.password.startsWith('$2a$') && !record.password.startsWith('$2b$')) {
     record.password = await bcrypt.hash(record.password, 10);
@@ -188,7 +206,8 @@ export async function createUserController(payload: Partial<UserRecord> & { send
         role: record.role,
         dept: record.dept,
         joinDate: record.joinDate || 'TBD',
-        status: record.status
+        status: record.status,
+        tempPassword: tempPasswordForEmail
       });
     } catch (err) {
       console.error(`Failed to send welcome notification for user ${record.id}:`, err);
@@ -246,9 +265,22 @@ export async function updateUserController(id: string, payload: UserUpdatePayloa
     password: payload.password === undefined ? existing.password : (payload.password || null),
   };
 
+  const isActivating = existing.status === 'pending' && record.status === 'active';
+  let tempPasswordForEmail: string | undefined = undefined;
+
+  if (isActivating) {
+    if (payload.password && !payload.password.startsWith('$2a$') && !payload.password.startsWith('$2b$')) {
+      tempPasswordForEmail = payload.password;
+    } else if (!record.password) {
+      const generatedTemp = Math.random().toString(36).slice(-8).toUpperCase();
+      tempPasswordForEmail = generatedTemp;
+      record.password = generatedTemp;
+    }
+  }
+
   // Ensure password is hashed if updated in plain text
-  if (payload.password && !payload.password.startsWith('$2a$') && !payload.password.startsWith('$2b$')) {
-    record.password = await bcrypt.hash(payload.password, 10);
+  if (record.password && !record.password.startsWith('$2a$') && !record.password.startsWith('$2b$')) {
+    record.password = await bcrypt.hash(record.password, 10);
   }
 
   // Auto-resolve department info if department changed
@@ -296,8 +328,6 @@ export async function updateUserController(id: string, payload: UserUpdatePayloa
       });
     }
   }
-
-  const isActivating = existing.status === 'pending' && record.status === 'active';
 
   await upsertUser(record);
   
@@ -356,6 +386,7 @@ export async function updateUserController(id: string, payload: UserUpdatePayloa
         employeeId: record.id,
         employeeName: record.name,
         employeeEmail: record.email,
+        tempPassword: tempPasswordForEmail
       });
     } catch (err) {
       console.error(`Failed to send activation notification for user ${record.id}:`, err);
@@ -385,8 +416,14 @@ export async function updateUserController(id: string, payload: UserUpdatePayloa
         updated_at: new Date()
       }
     });
-  } else if (existing.role === 'hod' && record.role !== 'hod') {
-    // If they were an HOD but aren't anymore, clear the department's HOD field
+  }
+
+  // If they are no longer an eligible HOD or no longer active or changed department, clear their HOD assignment
+  const isNoLongerHod = (record.status !== 'active') || 
+                        (record.role !== 'hod' && record.role !== 'director' && record.role !== 'admin') ||
+                        (record.dept !== existing.dept);
+                        
+  if (isNoLongerHod) {
     await prisma.departments.updateMany({
       where: { hod_id: record.id },
       data: {
@@ -417,17 +454,15 @@ export async function deleteUserController(id: string, actor = 'system') {
   
   await deleteUser(id);
   
-  // If the deleted user was an HOD, clear the department assignment
-  if (existing?.role === 'hod') {
-    await prisma.departments.updateMany({
-      where: { hod_id: id },
-      data: {
-        hod_id: null,
-        hod: 'Pending Assignment',
-        updated_at: new Date()
-      }
-    });
-  }
+  // If the deleted user was assigned as HOD, clear the department assignment
+  await prisma.departments.updateMany({
+    where: { hod_id: id },
+    data: {
+      hod_id: null,
+      hod: 'Pending Assignment',
+      updated_at: new Date()
+    }
+  });
 
   await insertSystemAuditLog('user-management', 'USER_DELETED', actor, {
     userId: id,

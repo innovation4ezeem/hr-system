@@ -80,6 +80,20 @@ function formatDate(value: string) {
   return parsed.toLocaleDateString('en-GB');
 }
 
+function formatDateTime(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString('en-GB', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
 function mapRequest(request: TeamHistoryLeaveRequest): LeaveRequest {
   const halfDay = String(request.session || '').toUpperCase() !== 'FULL' || Number(request.units || 0) < 1;
   const appliedSource = request.requestedAt || request.approvedAt || request.rejectedAt || request.cancelledAt || new Date().toISOString();
@@ -240,12 +254,16 @@ export default function LeaveRequestsPanel({ compact = false, departmentScope = 
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
                       <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: ltc.bg, color: ltc.text }}>
                         {req.type}
                       </span>
                       <span className="text-xs font-mono" style={{ color: 'rgb(var(--text-secondary))', fontVariantNumeric: 'tabular-nums' }}>
                         {req.startDate} {req.startDate !== req.endDate ? `→ ${req.endDate}` : ''} · {req.days}d
+                      </span>
+                      <span className="text-[11px] flex items-center gap-1 ml-1" style={{ color: 'rgb(var(--text-muted))' }}>
+                        <Icon name="ClockIcon" size={12} className="text-slate-400" />
+                        Sent: {formatDateTime(req.appliedAt)}
                       </span>
                     </div>
                     {!compact && <p className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{req.reason}</p>}

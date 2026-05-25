@@ -32,7 +32,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'hod' | 'employee' | 'intern' | 'probation';
+  role: 'admin' | 'hod' | 'employee' | 'intern' | 'probation' | 'director';
   phoneNumber?: string | null;
   dept: string;
   status: 'active' | 'inactive' | 'pending' | 'terminated';
@@ -1059,7 +1059,7 @@ function DepartmentsPanel() {
                 className="input-base"
               >
                 <option value="">Pending Assignment</option>
-                {users.filter(u => u.role === 'hod' || u.role === 'admin').map(u => (
+                {users.filter(u => u.role === 'hod' || u.role === 'admin' || u.role === 'director').map(u => (
                   <option key={u.id} value={u.id}>{u.name} ({u.dept})</option>
                 ))}
               </select>
@@ -1125,7 +1125,7 @@ function DepartmentsPanel() {
                       style={{ width: 'auto' }}
                     >
                       <option value="">Unassigned</option>
-                      {users.filter(u => u.role === 'hod' || u.role === 'admin').map(u => (
+                      {users.filter(u => u.role === 'hod' || u.role === 'admin' || u.role === 'director').map(u => (
                         <option key={u.id} value={u.id}>{u.name}</option>
                       ))}
                     </select>
