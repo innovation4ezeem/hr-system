@@ -1414,11 +1414,45 @@ export async function upsertLeaveEntitlementOverride(record: LeaveEntitlementOve
 
 export async function upsertManyLeaveEntitlementOverrides(records: LeaveEntitlementOverrideRecord[]) {
   if (records.length === 0) return;
-  const employeeId = records[0].employeeId;
-  const year = records[0].year;
 
+  // 1. Perform all upserts directly in DB
   for (const record of records) {
-    await upsertLeaveEntitlementOverride(record);
+    await prisma.employee_leave_entitlements.upsert({
+      where: { id: record.id || `OVER-${record.employeeId}-${record.leaveTypeCode}-${record.year}` },
+      update: {
+        override_days: record.overrideDays,
+        override_reason: record.overrideReason || null,
+        overridden_by: record.overriddenBy || null,
+        updated_at: new Date()
+      },
+      create: {
+        id: `OVER-${record.employeeId}-${record.leaveTypeCode}-${record.year}`,
+        employee_id: record.employeeId,
+        leave_type_code: record.leaveTypeCode,
+        balance_year: record.year,
+        override_days: record.overrideDays,
+        override_reason: record.overrideReason || null,
+        overridden_by: record.overriddenBy || null,
+        created_at: new Date(),
+        updated_at: new Date()
+      }
+    });
+  }
+
+  // 2. Synchronize balances for each unique employee-year pair ONCE
+  const uniqueKeys = new Set<string>();
+  const jobs: Array<{ employeeId: string; year: number }> = [];
+
+  for (const r of records) {
+    const key = `${r.employeeId}-${r.year}`;
+    if (!uniqueKeys.has(key)) {
+      uniqueKeys.add(key);
+      jobs.push({ employeeId: r.employeeId, year: r.year });
+    }
+  }
+
+  for (const job of jobs) {
+    await ensureBalancesForEmployee(job.employeeId, job.year);
   }
 }
 

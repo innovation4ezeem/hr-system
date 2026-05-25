@@ -1157,12 +1157,22 @@ export default function LeaveControlRoom() {
 
       <section id="leave-sec-ledger" className="rounded-xl p-4" style={{ background: 'rgb(var(--bg-card))', border: '1px solid rgb(var(--border-subtle))' }}>
         <h4 className="text-sm font-semibold mb-3" style={{ color: 'rgb(var(--text-primary))' }}>View All Employee </h4>
-        <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid rgb(var(--border-subtle))' }}>
-          <table className="w-full text-sm">
+        <div className="rounded-lg overflow-x-auto overflow-y-auto max-h-[600px]" style={{ border: '1px solid rgb(var(--border-subtle))' }}>
+          <table className="w-full text-sm border-collapse">
             <thead>
               <tr style={{ background: 'rgb(var(--bg-elevated))' }}>
                 {['Person', 'AL', 'AL Carry', 'MC', 'REWARD', 'REPLACE', 'WFH', 'CS', 'UNPAID', 'MATER', 'PATER', 'ADDIT', 'WFH Used', 'Actions'].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-xs whitespace-nowrap" style={{ color: 'rgb(var(--text-muted))' }}>{h}</th>
+                  <th 
+                    key={h} 
+                    className="px-3 py-2 text-left text-xs whitespace-nowrap sticky top-0 z-20" 
+                    style={{ 
+                      color: 'rgb(var(--text-muted))',
+                      background: 'rgb(var(--bg-elevated))',
+                      borderBottom: '1px solid rgb(var(--border-subtle))'
+                    }}
+                  >
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
