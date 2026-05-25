@@ -1409,7 +1409,7 @@ export async function upsertLeaveEntitlementOverride(record: LeaveEntitlementOve
     }
   });
 
-  await ensureBalancesForEmployee(record.employeeId, record.year);
+  await ensureBalancesForEmployee(record.employeeId, record.year, { skipServiceSync: true });
 }
 
 export async function upsertManyLeaveEntitlementOverrides(records: LeaveEntitlementOverrideRecord[]) {
@@ -1452,7 +1452,7 @@ export async function upsertManyLeaveEntitlementOverrides(records: LeaveEntitlem
   }
 
   for (const job of jobs) {
-    await ensureBalancesForEmployee(job.employeeId, job.year);
+    await ensureBalancesForEmployee(job.employeeId, job.year, { skipServiceSync: true });
   }
 }
 

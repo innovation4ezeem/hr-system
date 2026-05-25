@@ -169,7 +169,12 @@ export default function LeaveBalanceCards({ compact = false, isArchive = false, 
           )}
 
           {balances
-            .filter(lb => ['AL', 'MC', 'SL', 'WFH', 'REWARD', 'UNPAID', 'CS', 'MATERNITY', 'PATERNITY', 'REPLACEMENT', 'ADDITIONAL', 'BEREAVEMENT'].includes(lb.leaveTypeCode))
+            .filter(lb => {
+              const isSupportedType = ['AL', 'MC', 'SL', 'WFH', 'REWARD', 'UNPAID', 'CS', 'MATERNITY', 'PATERNITY', 'REPLACEMENT', 'ADDITIONAL', 'BEREAVEMENT'].includes(lb.leaveTypeCode);
+              // Hide completely disabled categories (indicated by a negative base entitlement)
+              const isEnabled = lb.openingDays >= 0;
+              return isSupportedType && isEnabled;
+            })
             .map(lb => {
             
             const lbName = lb.leaveTypeCode === 'REWARD' ? 'Reward Leave' : lb.leaveTypeName;
