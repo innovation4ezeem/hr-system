@@ -644,7 +644,7 @@ export default function SelfEvaluationSection({
                 <select 
                   value={targetEmployee} 
                   onChange={e => setTargetEmployee(e.target.value)}
-                  className="bg-black/[0.03] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-500 border-indigo-500/20 hover:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all"
+                  className="bg-black/[0.03] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg pl-3 pr-8 py-1.5 text-xs font-semibold text-indigo-500 border-indigo-500/20 hover:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all"
                 >
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id} className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">{emp.name}</option>
@@ -660,7 +660,7 @@ export default function SelfEvaluationSection({
             <select 
               value={periodLabel} 
               onChange={e => setSelectedPeriod(e.target.value)}
-              className="bg-black/[0.03] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="bg-black/[0.03] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
               {availablePeriods.map(p => (
                 <option key={p} value={p} className="bg-white dark:bg-[#1a1c23] text-slate-800 dark:text-white">{p}</option>

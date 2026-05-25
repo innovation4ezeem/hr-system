@@ -34,20 +34,18 @@ const nextConfig = {
     ];
   },
 
-  experimental: {
-    turbo: {
-      rules: {
-        // Turbopack equivalent for custom loaders (currently commented out in Webpack)
-        /*
-        '*.{jsx,tsx}': {
-          loaders: ['@dhiwise/component-tagger/nextLoader'],
-          as: '*.tsx',
-        },
-        */
+  turbopack: {
+    rules: {
+      // Turbopack equivalent for custom loaders (currently commented out in Webpack)
+      /*
+      '*.{jsx,tsx}': {
+        loaders: ['@dhiwise/component-tagger/nextLoader'],
+        as: '*.tsx',
       },
-      // Note: Turbopack currently handles file watching differently and doesn't 
-      // support a direct equivalent to watchOptions.ignored in next.config.js yet.
+      */
     },
+    // Note: Turbopack currently handles file watching differently and doesn't 
+    // support a direct equivalent to watchOptions.ignored in next.config.js yet.
   },
 
   webpack(
