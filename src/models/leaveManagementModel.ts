@@ -538,7 +538,7 @@ export async function ensureBalancesForEmployee(employeeId: string, year: number
       by: ['leave_type'],
       where: {
         employee_id: employeeId,
-        status: { in: ['approved', 'history-archived'] },
+        status: { in: ['approved'] },
         start_date: { gte: `${year}-01-01`, lte: `${year}-12-31` }
       },
       _sum: { units: true }
