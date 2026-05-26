@@ -111,12 +111,13 @@ export async function DELETE(request: NextRequest) {
     if (id) ids.push(id);
 
     try {
-      const clone = request.clone();
-      const body = await clone.json();
+      const body = await request.json();
       if (Array.isArray(body?.ids)) {
         ids = body.ids;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("DELETE JSON parsing error:", e);
+    }
 
     if (ids.length === 0) {
       return NextResponse.json({ error: 'No IDs provided' }, { status: 400 });

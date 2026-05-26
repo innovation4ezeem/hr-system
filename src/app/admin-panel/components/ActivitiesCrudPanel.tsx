@@ -506,7 +506,11 @@ export default function ActivitiesCrudPanel({
         body: JSON.stringify({ ids })
       });
       
-      if (!res.ok) throw new Error('Bulk delete failed');
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Bulk delete failed:', res.status, errText);
+        throw new Error(`Bulk delete failed: ${errText}`);
+      }
 
       toast.success(`Successfully deleted ${ids.length} records`);
       setSelectedIds(new Set());
@@ -514,6 +518,7 @@ export default function ActivitiesCrudPanel({
       void loadEntries();
       if (onMutation) onMutation();
     } catch (error) {
+      console.error('handleBulkDelete error:', error);
       toast.error('Failed to complete bulk deletion');
     } finally {
       setSaving(false);
