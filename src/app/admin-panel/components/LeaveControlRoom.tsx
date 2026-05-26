@@ -81,6 +81,32 @@ type EmployeeLeaveProfile = {
     additional: number;
     bereavement: number;
   };
+  used?: {
+    al: number;
+    mc: number;
+    reward: number;
+    cs: number;
+    wfh: number;
+    unpaid: number;
+    maternity: number;
+    paternity: number;
+    replacement: number;
+    additional: number;
+    bereavement: number;
+  };
+  adjusted?: {
+    al: number;
+    mc: number;
+    reward: number;
+    cs: number;
+    wfh: number;
+    unpaid: number;
+    maternity: number;
+    paternity: number;
+    replacement: number;
+    additional: number;
+    bereavement: number;
+  };
 };
 
 const initialRoleQuotas: RoleQuota[] = [];
@@ -569,14 +595,31 @@ export default function LeaveControlRoom() {
 
       setSaveState('saving');
 
-      const payload = Object.entries(fieldMap).map(([field, code]) => ({
-        employeeId: id,
-        leaveTypeCode: code,
-        year,
-        overrideDays: Number(profile.balances[field as keyof typeof profile.balances]),
-        overrideReason: 'Manual Admin Adjustment',
-        overriddenBy: userId || userRole,
-      }));
+      const payload = Object.entries(fieldMap).map(([field, code]) => {
+        const editedValue = Number(profile.balances[field as keyof typeof profile.balances]);
+        let overrideDays = editedValue;
+
+        if (code !== 'AL_CARRY' && editedValue >= 0) {
+          const used = Number(profile.used?.[field as keyof typeof profile.used] ?? 0);
+          const adj = Number(profile.adjusted?.[field as keyof typeof profile.adjusted] ?? 0);
+          
+          let carry = 0;
+          if (code === 'AL') {
+            carry = Number(profile.balances.alCarryForward ?? 0);
+          }
+          
+          overrideDays = Math.max(0, Number((editedValue + used - carry - adj).toFixed(2)));
+        }
+
+        return {
+          employeeId: id,
+          leaveTypeCode: code,
+          year,
+          overrideDays,
+          overrideReason: 'Manual Admin Adjustment',
+          overriddenBy: userId || userRole,
+        };
+      });
 
       const response = await fetch('/api/leave-management', {
         method: 'POST',
@@ -726,6 +769,32 @@ export default function LeaveControlRoom() {
                 replacement: userBalances.find((b: any) => b.leaveTypeCode === 'REPLACEMENT')?.openingDays || 0,
                 additional: userBalances.find((b: any) => b.leaveTypeCode === 'ADDITIONAL')?.openingDays || 0,
                 bereavement: userBalances.find((b: any) => b.leaveTypeCode === 'BEREAVEMENT')?.openingDays || 0,
+              },
+              used: {
+                al: al?.usedDays || 0,
+                mc: sl?.usedDays || 0,
+                wfh: wfh?.usedDays || 0,
+                reward: reward?.usedDays || 0,
+                cs: cs?.usedDays || 0,
+                unpaid: unpaid?.usedDays || 0,
+                maternity: userBalances.find((b: any) => b.leaveTypeCode === 'MATERNITY')?.usedDays || 0,
+                paternity: userBalances.find((b: any) => b.leaveTypeCode === 'PATERNITY')?.usedDays || 0,
+                replacement: userBalances.find((b: any) => b.leaveTypeCode === 'REPLACEMENT')?.usedDays || 0,
+                additional: userBalances.find((b: any) => b.leaveTypeCode === 'ADDITIONAL')?.usedDays || 0,
+                bereavement: userBalances.find((b: any) => b.leaveTypeCode === 'BEREAVEMENT')?.usedDays || 0,
+              },
+              adjusted: {
+                al: al?.adjustedDays || 0,
+                mc: sl?.adjustedDays || 0,
+                wfh: wfh?.adjustedDays || 0,
+                reward: reward?.adjustedDays || 0,
+                cs: cs?.adjustedDays || 0,
+                unpaid: unpaid?.adjustedDays || 0,
+                maternity: userBalances.find((b: any) => b.leaveTypeCode === 'MATERNITY')?.adjustedDays || 0,
+                paternity: userBalances.find((b: any) => b.leaveTypeCode === 'PATERNITY')?.adjustedDays || 0,
+                replacement: userBalances.find((b: any) => b.leaveTypeCode === 'REPLACEMENT')?.adjustedDays || 0,
+                additional: userBalances.find((b: any) => b.leaveTypeCode === 'ADDITIONAL')?.adjustedDays || 0,
+                bereavement: userBalances.find((b: any) => b.leaveTypeCode === 'BEREAVEMENT')?.adjustedDays || 0,
               },
             } as EmployeeLeaveProfile;
           });
