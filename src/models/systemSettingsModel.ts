@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { getCache, setCache, deleteCache } from '@/lib/cache';
 
 export type LeavePolicySettings = {
   annualLeaveDaysLTE2Years: number;
@@ -188,10 +189,21 @@ async function upsertSetting(settingKey: string, settingValue: unknown) {
   });
 }
 
+const SETTINGS_CACHE_KEY = 'system_settings';
+
 export async function getSystemSettings(): Promise<SystemSettingsRecord> {
+  // 1. Try to load from cache (Centralized Redis or high-speed local memory)
+  const cached = await getCache<SystemSettingsRecord>(SETTINGS_CACHE_KEY);
+  if (cached) {
+    return cached;
+  }
+
+  // 2. Cache miss: fallback to Database query
   const data = await prisma.system_settings.findMany({
     select: { setting_key: true, setting_json: true }
   });
+
+  let result: SystemSettingsRecord;
 
   if (!data || data.length === 0) {
     await Promise.all([
@@ -204,32 +216,36 @@ export async function getSystemSettings(): Promise<SystemSettingsRecord> {
       upsertSetting(SETTINGS_KEYS.maintenance, defaultSettings.maintenance),
       upsertSetting(SETTINGS_KEYS.general, defaultSettings.general),
     ]);
-    return defaultSettings;
+    result = defaultSettings;
+  } else {
+    const map = new Map<string, any>();
+    data.forEach((row) => map.set(row.setting_key, row.setting_json));
+
+    const parse = (key: string, def: any) => {
+      const val = map.get(key);
+      if (val === undefined || val === null) return def;
+      try {
+        return typeof val === 'string' ? JSON.parse(val) : val;
+      } catch {
+        return def;
+      }
+    };
+
+    result = {
+      leavePolicy: { ...defaultSettings.leavePolicy, ...parse(SETTINGS_KEYS.leavePolicy, {}) },
+      performanceWeights: { ...defaultSettings.performanceWeights, ...parse(SETTINGS_KEYS.performanceWeights, {}) },
+      performanceThresholds: { ...defaultSettings.performanceThresholds, ...parse(SETTINGS_KEYS.performanceThresholds, {}) },
+      performanceFormula: { ...defaultSettings.performanceFormula, ...parse(SETTINGS_KEYS.performanceFormula, {}) },
+      activityStandardMarks: { ...defaultSettings.activityStandardMarks, ...parse(SETTINGS_KEYS.activityStandardMarks, {}) },
+      activityBucketCategories: { ...defaultSettings.activityBucketCategories, ...parse(SETTINGS_KEYS.activityBucketCategories, {}) },
+      maintenance: { ...defaultSettings.maintenance, ...parse(SETTINGS_KEYS.maintenance, {}) },
+      general: { ...defaultSettings.general, ...parse(SETTINGS_KEYS.general, {}) },
+    };
   }
 
-  const map = new Map<string, any>();
-  data.forEach((row) => map.set(row.setting_key, row.setting_json));
-
-  const parse = (key: string, def: any) => {
-    const val = map.get(key);
-    if (val === undefined || val === null) return def;
-    try {
-      return typeof val === 'string' ? JSON.parse(val) : val;
-    } catch {
-      return def;
-    }
-  };
-
-  return {
-    leavePolicy: { ...defaultSettings.leavePolicy, ...parse(SETTINGS_KEYS.leavePolicy, {}) },
-    performanceWeights: { ...defaultSettings.performanceWeights, ...parse(SETTINGS_KEYS.performanceWeights, {}) },
-    performanceThresholds: { ...defaultSettings.performanceThresholds, ...parse(SETTINGS_KEYS.performanceThresholds, {}) },
-    performanceFormula: { ...defaultSettings.performanceFormula, ...parse(SETTINGS_KEYS.performanceFormula, {}) },
-    activityStandardMarks: { ...defaultSettings.activityStandardMarks, ...parse(SETTINGS_KEYS.activityStandardMarks, {}) },
-    activityBucketCategories: { ...defaultSettings.activityBucketCategories, ...parse(SETTINGS_KEYS.activityBucketCategories, {}) },
-    maintenance: { ...defaultSettings.maintenance, ...parse(SETTINGS_KEYS.maintenance, {}) },
-    general: { ...defaultSettings.general, ...parse(SETTINGS_KEYS.general, {}) },
-  };
+  // 3. Cache the parsed result for 5 minutes (300 seconds)
+  await setCache(SETTINGS_CACHE_KEY, result, 300);
+  return result;
 }
 
 export async function saveSystemSettings(settings: SystemSettingsRecord) {
@@ -241,4 +257,7 @@ export async function saveSystemSettings(settings: SystemSettingsRecord) {
   await upsertSetting(SETTINGS_KEYS.activityBucketCategories, settings.activityBucketCategories);
   await upsertSetting(SETTINGS_KEYS.maintenance, settings.maintenance);
   await upsertSetting(SETTINGS_KEYS.general, settings.general);
+
+  // 4. Instantly invalidate the settings cache so changes apply immediately
+  await deleteCache(SETTINGS_CACHE_KEY);
 }

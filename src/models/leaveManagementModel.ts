@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { getCache, setCache, clearCachePattern } from '@/lib/cache';
 import { calculateAnnualLeaveEntitlement, calculateLeaveEntitlementSnapshot, getLeavePolicyConfig } from '@/models/performanceManagementModel';
 import { leave_approvals_action, leave_request_days_slot } from '@prisma/client';
 
@@ -441,6 +442,12 @@ export async function resolveWorkflow(dept: string, leaveTypeCode: string): Prom
 // ─── Holidays ─────────────────────────────────────────────────────────────────
 
 export async function listHolidays(year?: number, region = 'DEFAULT'): Promise<LeaveHolidayRecord[]> {
+  const cacheKey = `holidays_${year ?? 'all'}_${region}`;
+  const cached = await getCache<LeaveHolidayRecord[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const data = await prisma.leave_holidays.findMany({
     where: {
       deleted_at: null,
@@ -452,13 +459,16 @@ export async function listHolidays(year?: number, region = 'DEFAULT'): Promise<L
     orderBy: { holiday_date: 'asc' },
   });
 
-  return (data ?? []).map((row) => ({
+  const result = (data ?? []).map((row) => ({
     id: row.id,
     holidayDate: toDateOnly(row.holiday_date),
     name: row.name,
     region: row.region || 'DEFAULT',
     optional: Boolean(row.optional),
   }));
+
+  await setCache(cacheKey, result, 300); // Cache for 5 minutes (300s)
+  return result;
 }
 
 export async function upsertHoliday(holiday: LeaveHolidayRecord) {
@@ -481,6 +491,9 @@ export async function upsertHoliday(holiday: LeaveHolidayRecord) {
       updated_at: new Date(),
     },
   });
+
+  // Clear holiday caches to ensure updates are reflected instantly
+  await clearCachePattern('holidays_');
 }
 
 export async function softDeleteHoliday(id: string) {
@@ -491,6 +504,9 @@ export async function softDeleteHoliday(id: string) {
       updated_at: new Date()
     },
   });
+
+  // Clear holiday caches to ensure updates are reflected instantly
+  await clearCachePattern('holidays_');
 }
 
 // ─── Leave Balances ───────────────────────────────────────────────────────────
