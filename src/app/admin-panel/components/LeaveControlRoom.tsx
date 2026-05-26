@@ -1178,7 +1178,7 @@ export default function LeaveControlRoom() {
                     );
                   })
                   .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
-                  .slice(0, 5)
+                  .slice(0, (historySearchTerm.trim() !== '' || globalSearch.trim() !== '') ? undefined : 5)
                   .map(r => (
                     <tr key={r.id} className="hover:bg-white/[0.01] transition-colors">
                       <td className="px-4 py-2 font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
