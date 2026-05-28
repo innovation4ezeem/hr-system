@@ -316,7 +316,7 @@ export default function ApplyLeaveRequestForm() {
       toast.success('Leave application submitted — awaiting manager approval');
       const reqId = payload?.request?.id as string | undefined;
       const yr = form.startDate ? Number(form.startDate.substring(0, 4)) : new Date().getFullYear();
-      window.location.href = '/employee-portal/leave';
+      router.push('/employee-portal/leave');
     } catch (error) {
       console.error('Submission error:', error);
       let message = 'Failed to submit request';

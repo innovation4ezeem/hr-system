@@ -2,6 +2,7 @@ import { imageHosts } from './image-hosts.config.mjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   // Prevent Prisma from being bundled - required for Prisma 7 compatibility
   serverExternalPackages: [
     '@prisma/client',

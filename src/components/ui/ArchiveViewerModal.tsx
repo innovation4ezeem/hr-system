@@ -173,13 +173,15 @@ export default function ArchiveViewerModal({ isOpen, onClose, module, year, payl
     } catch (err) {
       console.error('Archive PDF Export Error:', err);
       window.alert('Failed to generate PDF. Falling back to server export.');
-      const url = `/api/archive-records?mode=export&year=${year}&module=${module}&format=pdf`;
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      const url = `${basePath}/api/archive-records?mode=export&year=${year}&module=${module}&format=pdf`;
       window.location.href = url;
     }
   };
 
   const handleDownloadXLSX = () => {
-    const url = `/api/archive-records?mode=export&year=${year}&module=${module}&format=xlsx`;
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    const url = `${basePath}/api/archive-records?mode=export&year=${year}&module=${module}&format=xlsx`;
     window.location.href = url;
   };
 

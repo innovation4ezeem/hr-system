@@ -149,7 +149,8 @@ export default function LeaveApprovalQueuePanel() {
         end = customDateEnd ? new Date(customDateEnd) : new Date();
       }
 
-      const url = new URL('/api/leave-requests', window.location.origin);
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      const url = new URL(basePath + '/api/leave-requests', window.location.origin);
       url.searchParams.append('mode', 'queue');
       url.searchParams.append('hodId', 'ALL');
       if (statusFilter && statusFilter !== 'All') url.searchParams.append('status', statusFilter);

@@ -39,8 +39,35 @@ export default async function RootLayout({
 		themeMode: (cookieStore.get('ezeem_theme')?.value as 'light' | 'dark' | undefined) ?? undefined,
 	};
 
+	const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 	return (
 		<html lang="en" suppressHydrationWarning>
+			<head>
+				{basePath && (
+					<script
+						dangerouslySetInnerHTML={{
+							__html: `
+								(function() {
+									var basePath = ${JSON.stringify(basePath)};
+									var originalFetch = window.fetch;
+									window.fetch = function(input, init) {
+										var url = typeof input === 'string' ? input : (input && input.url);
+										if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith(basePath)) {
+											if (typeof input === 'string') {
+												input = basePath + input;
+											} else {
+												input = new Request(basePath + url, input);
+											}
+										}
+										return originalFetch.call(this, input, init);
+									};
+								})();
+							`,
+						}}
+					/>
+				)}
+			</head>
 			<body className="antialiased" suppressHydrationWarning>
 				<AppProvider bootstrap={bootstrap}>
 					<Suspense fallback={null}>
