@@ -39,7 +39,7 @@ export default function Error({
 
         <div className="flex gap-3">
           <button
-            onClick={() => window.location.assign(process.env.NEXT_PUBLIC_BASE_PATH || '/')}
+            onClick={() => window.location.assign('/')}
             className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold transition-all"
           >
             Back to Login
