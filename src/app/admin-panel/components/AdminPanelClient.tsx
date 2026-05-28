@@ -31,6 +31,7 @@ interface YearEntry {
 interface User {
   id: string;
   name: string;
+  preferredName?: string | null;
   email: string;
   role: 'admin' | 'hod' | 'employee' | 'intern' | 'probation' | 'director';
   phoneNumber?: string | null;
@@ -1853,7 +1854,7 @@ function PerformancePanel({ selectedYear }: { selectedYear: number }) {
       .filter(u => u.role !== 'admin')
       .map(u => ({
         id: u.id,
-        name: u.name ? decodeURIComponent(u.name) : 'Unknown'
+        name: u.preferredName ? decodeURIComponent(u.preferredName) : (u.name ? decodeURIComponent(u.name) : 'Unknown')
       }))
   ];
 
@@ -1887,7 +1888,7 @@ function KpiCalculatorPanel({
   const months = [...PERFORMANCE_MONTHS];
   const [saveStatus, setSaveStatus] = useState<'saved' | 'draft' | 'saving'>('saved');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const employeeOptions = initialUsers.filter(u => u.role !== 'admin').map(u => ({ id: u.id, name: u.name }));
+  const employeeOptions = initialUsers.filter(u => u.role !== 'admin').map(u => ({ id: u.id, name: u.preferredName || u.name }));
   const [employeeId, setEmployeeId] = useState(employeeOptions[0]?.id || 'u-001');
 
   const kpiRows = [

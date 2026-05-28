@@ -48,7 +48,7 @@ export default function ConfirmModal({
             <button onClick={onCancel} className="btn-ghost border" style={{ borderColor: 'rgb(var(--border))' }}>{cancelLabel}</button>
           )}
           <button 
-            onClick={onConfirm} 
+            onClick={() => onConfirm()} 
             disabled={loading}
             className={`${c.btn} text-white font-medium px-4 py-2 rounded-lg transition-all duration-150 active:scale-95 text-sm flex items-center gap-2 disabled:opacity-50`}
           >

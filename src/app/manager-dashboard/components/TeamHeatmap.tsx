@@ -247,7 +247,7 @@ export default function TeamHeatmap({
 
             return {
               id: u.id,
-              name: u.name,
+              name: u.preferredName ? decodeURIComponent(u.preferredName) : (u.name ? decodeURIComponent(u.name) : 'Unknown'),
               role: u.role || 'Staff',
               dept: u.dept || 'General',
               kpiScore: hasSavedScore ? Math.min(100, round2((s.performance60 || 0) / 0.6)) : fallbackPerf,

@@ -389,6 +389,14 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                   </div>
                 ))}
               </div>
+              {/* Bottom add button */}
+              <button
+                onClick={() => addArrayItem('rewards')}
+                className="w-full mt-1 py-2 px-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-amber-400/50 hover:bg-amber-400/5 text-xs text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition-all flex items-center justify-center gap-2"
+              >
+                <Icon name="PlusIcon" size={13} />
+                Add Reward
+              </button>
             </section>
 
             <section className="space-y-4">
@@ -436,6 +444,14 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                   </div>
                 ))}
               </div>
+              {/* Bottom add button */}
+              <button
+                onClick={() => addArrayItem('achievements')}
+                className="w-full mt-1 py-2 px-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-400/50 hover:bg-emerald-400/5 text-xs text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2"
+              >
+                <Icon name="PlusIcon" size={13} />
+                Add Achievement
+              </button>
             </section>
 
             <section className="space-y-4">
@@ -536,6 +552,14 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
                 ))}
 
               </div>
+              {/* Bottom add button */}
+              <button
+                onClick={() => addArrayItem('experienceInOffice')}
+                className="w-full mt-1 py-2 px-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-400/50 hover:bg-blue-400/5 text-xs text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-all flex items-center justify-center gap-2"
+              >
+                <Icon name="PlusIcon" size={13} />
+                Add Experience
+              </button>
             </section>
           </div>
         )}

@@ -222,7 +222,7 @@ export default function ActivitiesCrudPanel({
             .filter((u: any) => !departmentScope || u.dept === departmentScope)
             .map((item: any) => ({ 
               id: item.id, 
-              name: item.name, 
+              name: item.preferredName ? decodeURIComponent(item.preferredName) : (item.name ? decodeURIComponent(item.name) : 'Unknown'), 
               role: item.role,
               dept: item.dept,
               status: item.status || 'active'

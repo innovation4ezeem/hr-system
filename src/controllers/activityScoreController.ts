@@ -558,8 +558,18 @@ export async function deleteActivityScoreController(idOrIds: string | string[], 
     }
 
     if (sheetModified) {
-      if (existings.length === 1) {
-        await savePerformanceSheetController(parseYear(year), sheet, existings[0].assigned_to_id, existings[0].month);
+       const uniqueTargets = new Set<string>();
+      for (const existing of existings) {
+        if (existing.assigned_to_id && existing.month) {
+          uniqueTargets.add(`${existing.assigned_to_id}::${existing.month}`);
+        }
+      }
+      
+      if (uniqueTargets.size > 0) {
+        for (const target of uniqueTargets) {
+          const [empId, month] = target.split('::');
+          await savePerformanceSheetController(parseYear(year), sheet, empId, month);
+        }
       } else {
         await savePerformanceSheetController(parseYear(year), sheet);
       }

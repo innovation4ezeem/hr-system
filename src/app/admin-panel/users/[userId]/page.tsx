@@ -54,6 +54,10 @@ export default async function AdminUserRecordPage({ params }: { params: Promise<
     reportsToId: user.reports_to_id,
     role: user.role,
     dept: user.dept,
+    lastUpdatedAt: user.updated_at ? new Date(user.updated_at).toISOString() : null,
+    rewards: Array.isArray(user.rewards) ? user.rewards : (user.rewards ? JSON.parse(JSON.stringify(user.rewards)) : []),
+    achievements: Array.isArray(user.achievements) ? user.achievements : (user.achievements ? JSON.parse(JSON.stringify(user.achievements)) : []),
+    experienceInOffice: Array.isArray(user.experience_in_office) ? user.experience_in_office : (user.experience_in_office ? JSON.parse(JSON.stringify(user.experience_in_office)) : []),
   };
 
   return (

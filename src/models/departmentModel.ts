@@ -18,7 +18,7 @@ export async function listDepartments(): Promise<DepartmentRecord[]> {
 
   // 2. Fetch all users who are HODs to map their names
   const userData = await prisma.users.findMany({
-    where: { role: { in: ['hod', 'admin'] } },
+    where: { role: { in: ['hod', 'admin', 'director'] } },
     select: { id: true, name: true }
   });
 

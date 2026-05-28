@@ -4,6 +4,7 @@ import { users_role, users_status, users_preferred_theme, users_profile_update_s
 export type UserRecord = {
   id: string;
   name: string;
+  preferredName?: string | null;
   email: string;
   role: 'admin' | 'hod' | 'employee' | 'intern' | 'probation' | 'director';
   phoneNumber?: string | null;
@@ -30,6 +31,7 @@ function normalizeUserRow(row: any): UserRecord {
   return {
     id: String(row?.id || '').trim(),
     name: String(row?.name || '').trim(),
+    preferredName: row?.preferred_name ?? null,
     email: String(row?.email || '').trim(),
     role: ['admin', 'hod', 'intern', 'probation', 'director'].includes(role) ? role as UserRecord['role'] : 'employee',
     phoneNumber: row?.phone ?? row?.phone_number ?? row?.phoneNumber ?? null,

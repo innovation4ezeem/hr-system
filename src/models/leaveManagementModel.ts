@@ -1276,7 +1276,7 @@ export async function getLeaveReports(
 
     const data = await prisma.leave_requests.findMany({
       where: {
-        status: 'approved',
+        status: { in: ['approved', 'history-archived'] },
         start_date: { lte: endDate },
         end_date: { gte: startDate },
         dept: params.department || undefined,
@@ -1300,7 +1300,7 @@ export async function getLeaveReports(
     const year = params.year || new Date().getFullYear();
     const data = await prisma.leave_requests.findMany({
       where: {
-        status: 'approved',
+        status: { in: ['approved', 'history-archived'] },
         start_date: { gte: `${year}-01-01` },
         end_date: { lte: `${year}-12-31` },
         dept: params.department || undefined,

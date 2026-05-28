@@ -1392,7 +1392,7 @@ export async function getPerformanceReport(params: {
     if (leaveRows.length === 0) {
       const fallbackData = await prisma.leave_requests.findMany({
         where: {
-          status: 'approved',
+        status: { in: ['approved', 'history-archived'] },
           dept: params.department || undefined,
           start_date: { lte: yearEnd },
           end_date: { gte: yearStart }

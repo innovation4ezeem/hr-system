@@ -127,7 +127,7 @@ export default function MasterboardPanel({
             .filter((u: any) => u.role !== 'admin')
             .map((u: any) => ({ 
               id: u.id, 
-              name: u.name ? decodeURIComponent(u.name) : 'Unknown', 
+              name: u.preferredName ? decodeURIComponent(u.preferredName) : (u.name ? decodeURIComponent(u.name) : 'Unknown'), 
               dept: u.dept,
               role: u.role 
             }))
