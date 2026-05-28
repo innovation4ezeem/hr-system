@@ -523,7 +523,9 @@ function UsersPanel() {
 
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
-      const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const displayName = u.preferredName || u.name;
+      const matchesSearch = displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email.toLowerCase().includes(searchTerm.toLowerCase());
       const isInactive = u.status === 'inactive' || u.status === 'terminated';
 
@@ -755,7 +757,7 @@ function UsersPanel() {
                       href={`/admin-panel/users/${encodeURIComponent(user.id)}`}
                       className={`text-left font-bold hover:text-blue-400 hover:underline transition-colors block ${isInactive ? 'text-slate-400' : 'text-blue-500 dark:text-blue-400'}`}
                     >
-                      {user.name}
+                      {user.preferredName || user.name}
                     </Link>
                   </td>
                   <td className="px-2 py-2">
@@ -789,7 +791,7 @@ function UsersPanel() {
                     >
                       <option value="">None</option>
                       {users.filter(u => u.id !== user.id).map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
+                        <option key={u.id} value={u.id}>{u.preferredName || u.name}</option>
                       ))}
                     </select>
                   </td>
@@ -1127,7 +1129,7 @@ function DepartmentsPanel() {
                     >
                       <option value="">Unassigned</option>
                       {users.filter(u => u.role === 'hod' || u.role === 'admin' || u.role === 'director').map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
+                        <option key={u.id} value={u.id}>{u.preferredName || u.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1225,9 +1227,9 @@ function DepartmentsPanel() {
                     <option value="">Select an employee...</option>
                     {users
                       .filter(u => u.dept !== viewingEmployees.name)
-                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .sort((a, b) => (a.preferredName || a.name).localeCompare(b.preferredName || b.name))
                       .map(u => (
-                        <option key={u.id} value={u.id}>{u.name} ({u.dept || 'No Dept'})</option>
+                        <option key={u.id} value={u.id}>{u.preferredName || u.name} ({u.dept || 'No Dept'})</option>
                       ))
                     }
                   </select>
