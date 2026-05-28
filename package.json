@@ -41,11 +41,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "node server.js",
+    "start": "next start",
     "postinstall": "prisma generate"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   },
   "dependencies": {
     "@dhiwise/component-tagger": "^1.0.15",
