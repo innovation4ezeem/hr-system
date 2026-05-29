@@ -7,7 +7,7 @@ import { useAppContext } from '@/context/AppContext';
 import { buildClientAuthHeaders, readClientIdentity } from '@/lib/clientAuth';
 
 type LeaveType = 'Annual Leave' | 'AL (Carry Forward)' | 'MC' | 'WFH' | 'Unpaid' | 'Reward Leave' | 'CS Replacement';
-type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
+type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Archived';
 
 type TeamHistoryLeaveRequest = {
   id: string;
@@ -61,6 +61,7 @@ const statusStyle: Record<LeaveStatus, { bg: string; text: string }> = {
   Pending: { bg: 'rgba(251,191,36,0.1)', text: 'rgb(251 191 36)' },
   Approved: { bg: 'rgba(52,211,153,0.1)', text: 'rgb(52 211 153)' },
   Rejected: { bg: 'rgba(248,113,113,0.1)', text: 'rgb(248 113 113)' },
+  Archived: { bg: 'rgba(148,163,184,0.12)', text: 'rgb(148 163 184)' },
 };
 
 interface LeaveRequestsPanelProps {
@@ -73,6 +74,7 @@ function normalizeStatus(status: string): LeaveStatus {
   const normalized = String(status || '').toLowerCase();
   if (normalized === 'approved') return 'Approved';
   if (normalized === 'rejected' || normalized === 'cancelled') return 'Rejected';
+  if (normalized === 'history-archived') return 'Archived';
   return 'Pending';
 }
 
