@@ -33,6 +33,7 @@ import {
   toObject,
   workflowUpsertSchema,
 } from '@/lib/validators/leaveSchemas';
+import { getCache, setCache, clearCachePattern } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   console.log('--- API GET leave-management start ---');
@@ -49,7 +50,10 @@ export async function GET(request: NextRequest) {
       if (auth.response) return auth.response;
 
       const includeInactive = searchParams.get('includeInactive') === '1';
-      const leaveTypes = await listLeaveTypes(!includeInactive);
+      const cacheKey = `leave-types:${includeInactive ? 'all' : 'active'}`;
+      const cached = await getCache<any[]>(cacheKey);
+      const leaveTypes = cached ?? await listLeaveTypes(!includeInactive);
+      if (!cached) await setCache(cacheKey, leaveTypes, 300);
       return NextResponse.json({ leaveTypes }, { status: 200 });
     }
 
@@ -97,7 +101,10 @@ export async function GET(request: NextRequest) {
       }
 
       const year = parsed.data.year || new Date().getFullYear();
-      const balances = await listLeaveBalances(parsed.data.employeeId, year);
+      const cacheKey = `leave-balances:${parsed.data.employeeId}:${year}`;
+      const cached = await getCache<any[]>(cacheKey);
+      const balances = cached ?? await listLeaveBalances(parsed.data.employeeId, year);
+      if (!cached) await setCache(cacheKey, balances, 60);
       return NextResponse.json({ balances, year }, { status: 200 });
     }
 

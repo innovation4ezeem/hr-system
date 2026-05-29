@@ -3,6 +3,7 @@ import { requireRole, getRequestUserId } from '@/lib/apiAuth';
 import { prisma } from '@/lib/prisma';
 import { getUser } from '@/models/userModel';
 import { createActivityScoreController } from '@/controllers/activityScoreController';
+import { getCache, setCache, clearCachePattern } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,12 +17,19 @@ export async function GET(request: NextRequest) {
     const auth = requireRole(request, ['admin', 'hod', 'director', 'employee', 'intern', 'probation']);
     if (auth.response) return auth.response;
 
+    const cacheKey = `popularity-votes:${month}`;
+    const cached = await getCache<any[]>(cacheKey);
+    if (cached !== null) {
+      return NextResponse.json({ votes: cached });
+    }
+
     const votes = await prisma.popularity_votes.findMany({
       where: { month },
       orderBy: { created_at: 'desc' },
       take: 500 // Limit to avoid massive payloads
     });
 
+    await setCache(cacheKey, votes, 60);
     return NextResponse.json({ votes });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -82,7 +90,7 @@ export async function POST(request: NextRequest) {
       bucket = 'Director sticker';
     }
 
-    // Save vote
+    // Save vote and clear cache for this month
     const vote = await prisma.popularity_votes.create({
       data: {
         id: crypto.randomUUID(),
@@ -95,6 +103,7 @@ export async function POST(request: NextRequest) {
         month
       }
     });
+    await clearCachePattern(`popularity-votes:${month}`);
 
     const monthParts = month.split(' ');
     const monthName = monthParts[0] || 'Jan';

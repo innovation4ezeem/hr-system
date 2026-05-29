@@ -3,13 +3,18 @@ import {
   getSystemSettingsController,
   saveSystemSettingsController,
 } from '@/controllers/systemSettingsController';
+import { getCache, setCache, deleteCache } from '@/lib/cache';
+
+const SETTINGS_CACHE_KEY = 'system-settings:global';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const mode = searchParams.get('mode');
 
-    const settings = await getSystemSettingsController();
+    const cached = await getCache<any>(SETTINGS_CACHE_KEY);
+    const settings = cached ?? await getSystemSettingsController();
+    if (!cached) await setCache(SETTINGS_CACHE_KEY, settings, 300);
 
     if (mode === 'weights') {
       return NextResponse.json({
@@ -50,6 +55,7 @@ export async function POST(request: NextRequest) {
         },
         actor
       );
+      await deleteCache(SETTINGS_CACHE_KEY);
       return NextResponse.json({
         weights: updated.performanceWeights,
         formulaName: updated.performanceFormula.name,
@@ -70,6 +76,7 @@ export async function PUT(request: NextRequest) {
     const actor = body?.triggeredBy ? String(body.triggeredBy) : 'admin';
     const payload = body?.settings && typeof body.settings === 'object' ? body.settings : body;
     const settings = await saveSystemSettingsController(payload || {}, actor);
+    await deleteCache(SETTINGS_CACHE_KEY);
     return NextResponse.json({ settings }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
