@@ -68,6 +68,22 @@ export async function runYearEndArchiveController(fromYear: number, triggeredBy:
   });
   await upsertHistoricalRecord(fromYear, 'leave-summaries', leaveSummaryList);
 
+  // Query and archive detailed leave histories
+  const { listLeaveRequests } = await import('@/models/leaveRequestModel');
+  const leaveRequests = await listLeaveRequests({
+    dateRangeStart: `${fromYear}-01-01`,
+    dateRangeEnd: `${fromYear}-12-31`,
+    status: 'all'
+  });
+  await upsertHistoricalRecord(fromYear, 'leave-history', leaveRequests);
+
+  // Query and archive detailed performance activities (activity_score_entries)
+  const { prisma } = await import('@/lib/prisma');
+  const activityEntries = await prisma.activity_score_entries.findMany({
+    where: { year: fromYear }
+  });
+  await upsertHistoricalRecord(fromYear, 'performance-activities', activityEntries);
+
   // 2. Prepare next year workspace (Historical Placeholder)
   if (performanceSheet) {
     await upsertHistoricalRecord(toYear, 'performance', {
@@ -92,21 +108,35 @@ export async function runYearEndArchiveController(fromYear: number, triggeredBy:
   await resyncAllEmployeeBalances(toYear);
 
   // 5. Clear active records for the archived year if requested
-  // In a real system, we might move them to a separate 'history' table instead of just deleting,
-  // but here the requirement is to 'clear or reset active performance inputs/scores'.
   if (options?.clearActive) {
     const { prisma } = await import('@/lib/prisma');
+    const leaveRequestIds = leaveRequests.map(r => r.id);
     
-    // We only clear scores/inputs for the archived year to keep the current/next year active.
     await Promise.all([
       prisma.performance_scores.deleteMany({ where: { period_year: fromYear } }),
       prisma.performance_inputs.deleteMany({ where: { period_year: fromYear } }),
-      // Penalties are usually kept for a while, but we can archive them too if needed.
+      // Clear performance activities score entries for the archived year
+      prisma.activity_score_entries.deleteMany({ where: { year: fromYear } }),
+      // Clear active penalties for the archived year
+      prisma.penalties.deleteMany({
+        where: {
+          penalty_date: {
+            gte: `${fromYear}-01-01`,
+            lte: `${fromYear}-12-31`
+          }
+        }
+      }),
+      // Clear active leave history requests and related details
+      prisma.leave_approvals.deleteMany({ where: { request_id: { in: leaveRequestIds } } }),
+      prisma.leave_request_days.deleteMany({ where: { request_id: { in: leaveRequestIds } } }),
+      prisma.leave_calendar_entries.deleteMany({ where: { request_id: { in: leaveRequestIds } } }),
+      prisma.employee_leave_attendance_records.deleteMany({ where: { leave_request_id: { in: leaveRequestIds } } }),
+      prisma.leave_requests.deleteMany({ where: { id: { in: leaveRequestIds } } }),
     ]);
   }
 
   const summary = {
-    archivedModules: ['performance', 'scoring-categories', 'penalty-records', 'leave-summaries'],
+    archivedModules: ['performance', 'scoring-categories', 'penalty-records', 'leave-summaries', 'leave-history', 'performance-activities'],
     performanceFound: Boolean(performanceSheet),
     scoringCategoryCount: scoringCategories.length,
     leaveStateFound: false,

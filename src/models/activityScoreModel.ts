@@ -33,6 +33,60 @@ export async function listActivityScores(
 ): Promise<ActivityScoreRecord[]> {
   const year = filters.year || new Date().getFullYear();
 
+  const { isArchivedYear } = await import('@/lib/archivePolicy');
+  if (isArchivedYear(year)) {
+    const { getHistoricalRecords } = await import('@/models/yearEndArchiveModel');
+    const archiveData = await getHistoricalRecords(year, 'performance-activities');
+    const allActivities = (archiveData[0]?.payload as any[]) || [];
+
+    let startDate = filters.startDate;
+    let endDate = filters.endDate;
+
+    if (filters.periodType && filters.periodNo) {
+      if (filters.periodType === 'monthly') {
+        const month = filters.periodNo;
+        startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      } else if (filters.periodType === 'quarterly') {
+        const q = filters.periodNo;
+        const startMonth = (q - 1) * 3 + 1;
+        const endMonth = q * 3;
+        startDate = `${year}-${String(startMonth).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, endMonth, 0).getDate();
+        endDate = `${year}-${String(endMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      }
+    }
+
+    const filtered = allActivities.filter(row => {
+      const matchesEmp = filters.employeeId ? row.assigned_to_id === filters.employeeId : true;
+      const matchesEmpName = filters.employeeName ? String(row.assigned_to_name).toLowerCase().includes(filters.employeeName.trim().toLowerCase()) : true;
+      const matchesStart = startDate ? row.date >= startDate : true;
+      const matchesEnd = endDate ? row.date <= endDate : true;
+      return matchesEmp && matchesEmpName && matchesStart && matchesEnd;
+    });
+
+    return filtered.map((row) => ({
+      id: row.id,
+      activityName: row.activity_name,
+      date: row.date,
+      year: row.year,
+      month: row.month,
+      category: row.category,
+      scoreBucket: row.score_bucket,
+      score: Number(row.score || 0),
+      sourceFolder: row.source_folder,
+      description: row.description || '',
+      assignedToName: row.assigned_to_name,
+      assignedToId: row.assigned_to_id,
+      attachmentName: row.attachment_name || '',
+      attachmentUrl: row.attachment_url || '',
+      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : undefined,
+      updatedBy: row.updated_by || undefined,
+      performanceWeights: row.performance_weights,
+    }));
+  }
+
   let startDate = filters.startDate;
   let endDate = filters.endDate;
 

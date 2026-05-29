@@ -51,6 +51,7 @@ export type LeaveRequest = {
   cancelledAt?: string;
   employeeStatus: 'active' | 'inactive' | 'pending' | 'terminated';
   movedToHistoryAt?: string;
+  isCarryForward?: boolean;
 };
 
 function safeIsoString(val: any): string | undefined {
@@ -94,6 +95,7 @@ function mapRow(row: any): LeaveRequest {
     cancelledAt: safeIsoString(row.cancelled_at),
     employeeStatus: (row.users?.status || row.employee_status || 'active') as any,
     movedToHistoryAt: safeIsoString(row.moved_to_history_at),
+    isCarryForward: row.isCarryForward !== undefined ? Boolean(row.isCarryForward) : undefined,
   };
 }
 
@@ -265,3 +267,118 @@ export async function markLeaveRequestMovedToHistory(id: string): Promise<void> 
     }
   });
 }
+
+export async function enrichLeaveRequestsWithCarryForward(requests: LeaveRequest[]): Promise<LeaveRequest[]> {
+  if (requests.length === 0) return [];
+
+  const { isArchivedYear } = await import('@/lib/archivePolicy');
+
+  // Group requests by employeeId and year
+  const employeeIds = Array.from(new Set(requests.map(r => r.employeeId)));
+  const years = Array.from(new Set(requests.map(r => {
+    const dateStr = r.startDate;
+    return new Date(dateStr).getFullYear();
+  })));
+
+  const isCarryForwardMap = new Map<string, boolean>();
+
+  for (const year of years) {
+    // 1. Fetch carry forward balances for these employees and this year
+    const carryForwardBalances = new Map<string, number>();
+    const balances = await prisma.leave_balances.findMany({
+      where: {
+        employee_id: { in: employeeIds },
+        balance_year: year,
+        leave_type_code: 'AL'
+      },
+      select: {
+        employee_id: true,
+        carry_forward_days: true
+      }
+    });
+    for (const b of balances) {
+      carryForwardBalances.set(b.employee_id, Number(b.carry_forward_days || 0));
+    }
+
+    // 2. Fetch all AL requests in Jan/Feb for these employees in this year.
+    let yearALRequests: any[] = [];
+    if (isArchivedYear(year)) {
+      const { getHistoricalRecords } = await import('@/models/yearEndArchiveModel');
+      const archiveData = await getHistoricalRecords(year, 'leave-history');
+      const archivedRequests = (archiveData[0]?.payload as any[]) || [];
+      yearALRequests = archivedRequests.filter(r => 
+        (r.employeeId || r.employee_id) && employeeIds.includes(r.employeeId || r.employee_id) &&
+        (r.leaveType || r.leave_type) === 'AL' &&
+        (r.status === 'approved' || r.status === 'pending' || r.status === 'history-archived')
+      ).map(r => ({
+        id: r.id,
+        employeeId: r.employeeId || r.employee_id,
+        startDate: r.startDate || r.start_date,
+        units: Number(r.units || 0)
+      }));
+    } else {
+      const dbRequests = await prisma.leave_requests.findMany({
+        where: {
+          employee_id: { in: employeeIds },
+          leave_type: 'AL',
+          start_date: {
+            gte: `${year}-01-01`,
+            lte: `${year}-02-28`
+          },
+          status: {
+            in: ['approved', 'pending'] as any
+          }
+        },
+        select: {
+          id: true,
+          employee_id: true,
+          start_date: true,
+          units: true
+        }
+      });
+      yearALRequests = dbRequests.map(r => ({
+        id: r.id,
+        employeeId: r.employee_id,
+        startDate: r.start_date,
+        units: Number(r.units || 0)
+      }));
+    }
+
+    // Group by employee
+    const empALRequests = new Map<string, any[]>();
+    for (const r of yearALRequests) {
+      if (!empALRequests.has(r.employeeId)) {
+        empALRequests.set(r.employeeId, []);
+      }
+      empALRequests.get(r.employeeId)!.push(r);
+    }
+
+    // Sort chronologically and determine carry forward
+    for (const empId of employeeIds) {
+      const list = empALRequests.get(empId) || [];
+      list.sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+      const limit = carryForwardBalances.get(empId) || 0;
+      let runningSum = 0;
+
+      for (const r of list) {
+        const units = r.units;
+        if (runningSum < limit) {
+          isCarryForwardMap.set(r.id, true);
+        } else {
+          isCarryForwardMap.set(r.id, false);
+        }
+        runningSum += units;
+      }
+    }
+  }
+
+  return requests.map(r => {
+    if (r.leaveType !== 'AL') return r;
+    return {
+      ...r,
+      isCarryForward: isCarryForwardMap.get(r.id) || false
+    };
+  });
+}
+

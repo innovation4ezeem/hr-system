@@ -1,7 +1,7 @@
 import { safeJsonParse } from '@/lib/utils';
 import { prisma } from '@/lib/prisma';
 
-export type ArchiveModule = 'performance' | 'scoring-categories' | 'penalty-records' | 'leave-summaries';
+export type ArchiveModule = 'performance' | 'scoring-categories' | 'penalty-records' | 'leave-summaries' | 'leave-history' | 'performance-activities';
 
 export async function upsertHistoricalRecord(year: number, moduleName: ArchiveModule, payload: unknown) {
   await prisma.historical_records.upsert({

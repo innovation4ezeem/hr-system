@@ -52,6 +52,7 @@ type UnifiedProfile = {
     requestedAt?: string;
     approvedAt?: string;
     movedToHistoryAt?: string;
+    isCarryForward?: boolean;
   }>;
   performance: Array<{
     id: string;
@@ -328,7 +329,13 @@ export default function EmployeeUnifiedProfilePanel() {
                     <tbody className="divide-y" style={{ borderColor: 'rgb(var(--border-subtle))' }}>
                       {(filteredLeaveHistory || []).map(item => (
                         <tr key={`leave-row-${item.id}`} className="hover:bg-white/[0.02]">
-                          <td className="px-3 py-2">{item.leaveType}</td>
+                          <td className="px-3 py-2">
+                            {item.leaveType === 'AL' && item.isCarryForward ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400">
+                                AL (Carry Forward)
+                              </span>
+                            ) : item.leaveType}
+                          </td>
                           <td className="px-3 py-2">{item.startDate}</td>
                           <td className="px-3 py-2">{item.endDate}</td>
                           <td className="px-3 py-2 text-right">{item.units}</td>

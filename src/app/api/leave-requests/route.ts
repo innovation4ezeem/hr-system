@@ -58,7 +58,9 @@ export async function GET(request: NextRequest) {
         department: (payload.hodId === 'ALL' && auth.role !== 'admin') ? getRequestDepartment(request) : undefined,
       });
 
-      return NextResponse.json({ requests }, { status: 200 });
+      const { enrichLeaveRequestsWithCarryForward } = await import('@/models/leaveRequestModel');
+      const enrichedRequests = await enrichLeaveRequestsWithCarryForward(requests);
+      return NextResponse.json({ requests: enrichedRequests }, { status: 200 });
     }
 
     if (mode === 'available-years') {
@@ -107,14 +109,32 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Employee leave history
-      const requests = await getEmployeeLeaveHistoryController({
-        employeeId: payload.employeeId,
-        year: payload.year,
-        status: payload.status as any,
-      });
+      let requests: any[] = [];
+      const targetYear = payload.year || new Date().getFullYear();
+      const { isArchivedYear } = await import('@/lib/archivePolicy');
+      
+      if (isArchivedYear(targetYear)) {
+        const { getHistoricalRecords } = await import('@/models/yearEndArchiveModel');
+        const archiveData = await getHistoricalRecords(targetYear, 'leave-history');
+        const allRequests = (archiveData[0]?.payload as any[]) || [];
+        
+        requests = allRequests.filter(r => {
+          const matchesEmp = r.employeeId === payload.employeeId;
+          const matchesStatus = payload.status ? r.status === payload.status : true;
+          return matchesEmp && matchesStatus;
+        });
+      } else {
+        // Employee leave history
+        requests = await getEmployeeLeaveHistoryController({
+          employeeId: payload.employeeId,
+          year: payload.year,
+          status: payload.status as any,
+        });
+      }
 
-      return NextResponse.json({ requests }, { status: 200 });
+      const { enrichLeaveRequestsWithCarryForward } = await import('@/models/leaveRequestModel');
+      const enrichedRequests = await enrichLeaveRequestsWithCarryForward(requests);
+      return NextResponse.json({ requests: enrichedRequests }, { status: 200 });
     }
 
     if (mode === 'team-history') {
@@ -138,18 +158,45 @@ export async function GET(request: NextRequest) {
         departmentScope = department;
       }
 
-      const requests = await getTeamLeaveHistoryController({
-        department: departmentScope,
-        year: parsed.data.year,
-        status: parsed.data.status as any,
-        leaveType: parsed.data.leaveType,
-        employmentType: parsed.data.employmentType as any,
-        dateRangeStart: parsed.data.dateRangeStart,
-        dateRangeEnd: parsed.data.dateRangeEnd,
-        employeeNameSearch: parsed.data.employeeNameSearch,
-      });
+      const targetYear = parsed.data.year || new Date().getFullYear();
+      const { isArchivedYear } = await import('@/lib/archivePolicy');
+      let requests: any[] = [];
 
-      return NextResponse.json({ requests }, { status: 200 });
+      if (isArchivedYear(targetYear)) {
+        const { getHistoricalRecords } = await import('@/models/yearEndArchiveModel');
+        const archiveData = await getHistoricalRecords(targetYear, 'leave-history');
+        const allRequests = (archiveData[0]?.payload as any[]) || [];
+
+        requests = allRequests.filter(r => {
+          const matchesDept = departmentScope ? r.dept === departmentScope : true;
+          const matchesStatus = (parsed.data.status && parsed.data.status !== 'all') ? r.status === parsed.data.status : true;
+          const matchesType = parsed.data.leaveType ? r.leaveType === parsed.data.leaveType : true;
+          const matchesEmployment = parsed.data.employmentType ? r.employmentType === parsed.data.employmentType : true;
+          const matchesStart = parsed.data.dateRangeStart ? r.startDate >= parsed.data.dateRangeStart : true;
+          const matchesEnd = parsed.data.dateRangeEnd ? r.endDate <= parsed.data.dateRangeEnd : true;
+          return matchesDept && matchesStatus && matchesType && matchesEmployment && matchesStart && matchesEnd;
+        });
+
+        const keyword = String(parsed.data.employeeNameSearch || '').trim().toLowerCase();
+        if (keyword) {
+          requests = requests.filter(item => item.employeeName.toLowerCase().includes(keyword));
+        }
+      } else {
+        requests = await getTeamLeaveHistoryController({
+          department: departmentScope,
+          year: parsed.data.year,
+          status: parsed.data.status as any,
+          leaveType: parsed.data.leaveType,
+          employmentType: parsed.data.employmentType as any,
+          dateRangeStart: parsed.data.dateRangeStart,
+          dateRangeEnd: parsed.data.dateRangeEnd,
+          employeeNameSearch: parsed.data.employeeNameSearch,
+        });
+      }
+
+      const { enrichLeaveRequestsWithCarryForward } = await import('@/models/leaveRequestModel');
+      const enrichedRequests = await enrichLeaveRequestsWithCarryForward(requests);
+      return NextResponse.json({ requests: enrichedRequests }, { status: 200 });
     }
 
     return NextResponse.json({ error: 'Invalid mode' }, { status: 400 });
@@ -215,8 +262,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Check if the requestor is the reporting officer (manager self-approval)
-      const isManagerSubmittingOwnRequest = auth.role !== 'employee' && payload.reportingOfficer === payload.employeeId;
+      // Check if the requestor is the reporting officer (manager self-approval) or an admin
+      const isManagerSubmittingOwnRequest = auth.role === 'admin' || (auth.role !== 'employee' && payload.reportingOfficer === payload.employeeId);
 
       const leaveRequest = await submitLeaveRequestController({
         employeeId: payload.employeeId,
@@ -236,7 +283,9 @@ export async function POST(request: NextRequest) {
         toHalf: payload.toHalf,
       });
 
-      return NextResponse.json({ request: leaveRequest }, { status: 201 });
+      const { enrichLeaveRequestsWithCarryForward } = await import('@/models/leaveRequestModel');
+      const enriched = await enrichLeaveRequestsWithCarryForward([leaveRequest]);
+      return NextResponse.json({ request: enriched[0] }, { status: 201 });
     }
 
     if (action === 'bulk-decision') {

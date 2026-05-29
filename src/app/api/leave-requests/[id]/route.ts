@@ -25,56 +25,51 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'actor is required' }, { status: 400 });
     }
 
+    let updatedRequest: any = null;
+
     if (action === 'approve') {
       const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const resolvedActor = resolveActorForMutation(request, auth.role, actor);
       if (resolvedActor.response) return resolvedActor.response;
-      const updatedRequest = await approveLeaveRequestController(requestId, resolvedActor.actor, parsed.data.comment);
-      return NextResponse.json({ request: updatedRequest }, { status: 200 });
-    }
-
-    if (action === 'reject') {
+      updatedRequest = await approveLeaveRequestController(requestId, resolvedActor.actor, parsed.data.comment);
+    } else if (action === 'reject') {
       const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const resolvedActor = resolveActorForMutation(request, auth.role, actor);
       if (resolvedActor.response) return resolvedActor.response;
       const reason = parsed.data.reason || 'No reason provided';
-      const updatedRequest = await rejectLeaveRequestController(requestId, resolvedActor.actor, reason, parsed.data.comment);
-      return NextResponse.json({ request: updatedRequest }, { status: 200 });
-    }
-
-    if (action === 'inquire') {
+      updatedRequest = await rejectLeaveRequestController(requestId, resolvedActor.actor, reason, parsed.data.comment);
+    } else if (action === 'inquire') {
       const auth = requireRole(request, ['director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const resolvedActor = resolveActorForMutation(request, auth.role, actor);
       if (resolvedActor.response) return resolvedActor.response;
       const question = parsed.data.reason || body?.question || '';
-      const updatedRequest = await inquireLeaveRequestController(requestId, resolvedActor.actor, question);
-      return NextResponse.json({ request: updatedRequest }, { status: 200 });
-    }
-
-    if (action === 'respond-to-inquiry') {
+      updatedRequest = await inquireLeaveRequestController(requestId, resolvedActor.actor, question);
+    } else if (action === 'respond-to-inquiry') {
       const auth = requireRole(request, ['employee', 'director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const requesterId = getRequestUserId(request);
       if (!requesterId) return NextResponse.json({ error: 'Missing user identity' }, { status: 401 });
       const response = parsed.data.reason || body?.response || '';
-      const updatedRequest = await respondToInquiryController(requestId, requesterId, response);
-      return NextResponse.json({ request: updatedRequest }, { status: 200 });
-    }
-
-    if (action === 'cancel') {
+      updatedRequest = await respondToInquiryController(requestId, requesterId, response);
+    } else if (action === 'cancel') {
       const auth = requireRole(request, ['employee', 'director', 'hod', 'admin']);
       if (auth.response) return auth.response;
       const resolvedActor = resolveActorForMutation(request, auth.role, actor);
       if (resolvedActor.response) return resolvedActor.response;
       const reason = parsed.data.reason || 'Cancelled by employee';
-      const updatedRequest = await cancelLeaveRequestController(requestId, resolvedActor.actor, reason);
-      return NextResponse.json({ request: updatedRequest }, { status: 200 });
+      updatedRequest = await cancelLeaveRequestController(requestId, resolvedActor.actor, reason);
+    } else {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    if (updatedRequest) {
+      const { enrichLeaveRequestsWithCarryForward } = await import('@/models/leaveRequestModel');
+      const enriched = await enrichLeaveRequestsWithCarryForward([updatedRequest]);
+      return NextResponse.json({ request: enriched[0] }, { status: 200 });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 400 });

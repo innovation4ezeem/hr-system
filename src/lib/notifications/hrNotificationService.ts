@@ -1,4 +1,4 @@
-import { listUsers, type UserRecord } from '@/models/userModel';
+import { listUsers, getUser, type UserRecord } from '@/models/userModel';
 import { 
   sendDualNotification,
   sendEmailNotification 
@@ -288,9 +288,8 @@ export class HRNotificationService {
       });
 
       // 2. Notify HOD (Template 4B)
-      const allUsers = await listUsers();
-      const employeeRecord = allUsers.find(u => u.id === params.employeeId);
-      const hod = allUsers.find(u => u.id === employeeRecord?.reportsToId);
+      const employeeRecord = await getUser(params.employeeId);
+      const hod = employeeRecord?.reportsToId ? await getUser(employeeRecord.reportsToId) : null;
       if (hod) {
         const hodTpl = emailTemplates.performanceUpdatedHOD(details, hod.name);
         await sendDualNotification({
@@ -364,9 +363,8 @@ export class HRNotificationService {
       });
 
       // 2. Notify HOD (Template 5B)
-      const allUsers = await listUsers();
-      const employeeRecord = allUsers.find(u => u.id === params.employeeId);
-      const hod = allUsers.find(u => u.id === employeeRecord?.reportsToId);
+      const employeeRecord = await getUser(params.employeeId);
+      const hod = employeeRecord?.reportsToId ? await getUser(employeeRecord.reportsToId) : null;
       if (hod) {
         const hodTpl = emailTemplates.penaltyIssuedHOD(details, hod.name);
         await sendDualNotification({
@@ -414,8 +412,7 @@ export class HRNotificationService {
         return;
       }
 
-      const allUsers = await listUsers();
-      const employeeRecord = allUsers.find(u => u.id === params.employeeId);
+      const employeeRecord = await getUser(params.employeeId);
       if (!employeeRecord) return;
 
       const timestamp = new Date().toLocaleString();
@@ -471,8 +468,7 @@ export class HRNotificationService {
     actorName: string;
   }) {
     try {
-      const allUsers = await listUsers();
-      const employee = allUsers.find(u => u.id === params.employeeId);
+      const employee = await getUser(params.employeeId);
       if (!employee) return;
 
       const timestamp = new Date().toLocaleString();

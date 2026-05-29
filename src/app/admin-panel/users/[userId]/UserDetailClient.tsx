@@ -54,8 +54,11 @@ export default function UserDetailClient({ user }: UserDetailClientProps) {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <UserProfileEditor 
                 user={user} 
-                onClose={() => router.push('/admin-panel/users')} 
-                onSave={() => {}} 
+                onClose={() => {
+                  router.refresh();
+                  router.push('/admin-panel/users');
+                }} 
+                onSave={() => router.refresh()} 
               />
             </div>
           ) : (

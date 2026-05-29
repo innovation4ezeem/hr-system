@@ -1513,10 +1513,12 @@ export async function getUnifiedEmployeeProfile(params: { employeeId: string; ye
     })
   ]);
 
-  const leaveHistory = leaveHistoryRows.map((row) => {
+  const leaveHistoryRowsMapped = leaveHistoryRows.map((row) => {
     const proratedUnits = round2(prorateUnitsToYearWindow({ startDate: row.start_date, endDate: row.end_date, units: Number(row.units || 0), year: params.year }));
     return { id: row.id, employeeId: row.employee_id, employeeName: row.employee_name, department: row.dept, leaveType: row.leave_type, startDate: toDateOnly(row.start_date), endDate: toDateOnly(row.end_date), units: proratedUnits, status: row.status, requestedAt: row.requested_at ? row.requested_at.toISOString() : undefined, approvedAt: row.approved_at ? row.approved_at.toISOString() : undefined, cancelledAt: row.cancelled_at ? row.cancelled_at.toISOString() : undefined, movedToHistoryAt: row.moved_to_history_at ? row.moved_to_history_at.toISOString() : undefined };
   });
+  const { enrichLeaveRequestsWithCarryForward } = await import('./leaveRequestModel');
+  const leaveHistory = await enrichLeaveRequestsWithCarryForward(leaveHistoryRowsMapped as any);
 
   const latestScore = performance[0];
   const activities = await listPerformanceActivities({ employeeId: params.employeeId, year: params.year });
@@ -1679,6 +1681,36 @@ export async function listPerformanceActivities(params: {
   pillar?: 'Performance' | 'Participation' | 'Popularity' | 'All';
   year?: number;
 }): Promise<PerformanceActivity[]> {
+  const targetYear = params.year || new Date().getFullYear();
+  const { isArchivedYear } = await import('@/lib/archivePolicy');
+  const isArchived = isArchivedYear(targetYear);
+
+  if (isArchived) {
+    const { getHistoricalRecords } = await import('@/models/yearEndArchiveModel');
+    const archiveData = await getHistoricalRecords(targetYear, 'performance-activities');
+    const allActivities = (archiveData[0]?.payload as any[]) || [];
+
+    const filtered = allActivities.filter(act => {
+      const matchesEmp = act.assigned_to_id === params.employeeId;
+      const matchesPillar = (params.pillar && params.pillar !== 'All') ? act.category === params.pillar : true;
+      return matchesEmp && matchesPillar;
+    });
+
+    return filtered.map((row) => ({
+      id: row.id,
+      employeeId: row.assigned_to_id,
+      activityName: row.activity_name,
+      category: row.category,
+      scoreBucket: row.score_bucket,
+      score: Number(row.score || 0),
+      score_value: Number(row.score || 0),
+      pillar: normalizeCategory(row.category) as 'Performance' | 'Participation' | 'Popularity',
+      activityDate: row.date,
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+      created_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    }));
+  }
+
   const data = await prisma.activity_score_entries.findMany({
     where: {
       assigned_to_id: params.employeeId,

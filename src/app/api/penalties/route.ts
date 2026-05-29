@@ -84,15 +84,31 @@ export async function GET(request: NextRequest) {
     const employeeId = (searchParams.get('employeeId') || '').trim();
     const department = (searchParams.get('department') || '').trim() || undefined;
 
-    // Load penalties and penalty types in parallel for fast category resolution
-    const [penalties, penaltyTypes] = await Promise.all([
-      getPenaltiesController({
+    const { isArchivedYear } = await import('@/lib/archivePolicy');
+    const targetYear = year || new Date().getFullYear();
+    const isArchived = isArchivedYear(targetYear);
+
+    let penalties: any[] = [];
+    const penaltyTypes = await getPenaltyTypesController();
+
+    if (isArchived) {
+      const { getHistoricalRecords } = await import('@/models/yearEndArchiveModel');
+      const archiveData = await getHistoricalRecords(targetYear, 'penalty-records');
+      const allPenalties = (archiveData[0]?.payload as any[]) || [];
+
+      penalties = allPenalties.filter(p => {
+        const matchesEmp = employeeId ? (p.employeeId === employeeId) : true;
+        const deptVal = p.department || p.dept || '';
+        const matchesDept = department ? (String(deptVal).toLowerCase() === department.toLowerCase()) : true;
+        return matchesEmp && matchesDept;
+      });
+    } else {
+      penalties = await getPenaltiesController({
         employeeId: employeeId || undefined,
-        year,
+        year: targetYear,
         department,
-      }),
-      getPenaltyTypesController(),
-    ]);
+      });
+    }
 
     // Build lookup: typeCode → typeName for display
     const penaltyTypeLookup = new Map<string, string>();

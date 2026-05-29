@@ -33,6 +33,7 @@ type LeaveRequest = {
   status: 'Applied' | 'Approved' | 'Rejected';
   attachment?: string;
   reason?: string;
+  isCarryForward?: boolean;
 };
 
 type HistoryRow = {
@@ -720,6 +721,7 @@ export default function LeaveControlRoom() {
             status: mapDbRequestStatus(String(request.status || 'pending')),
             attachment: request.attachment ? String(request.attachment) : undefined,
             reason: request.reason ? String(request.reason) : undefined,
+            isCarryForward: Boolean(request.isCarryForward),
           }));
 
         const liveProfiles = (Array.isArray(usersPayload?.users) ? usersPayload.users : [])
@@ -1185,11 +1187,12 @@ export default function LeaveControlRoom() {
                         {decodeURIComponent(r.employee)}
                       </td>
                       <td className="px-4 py-2">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${r.type === 'AL' ? 'bg-blue-500/10 text-blue-400' :
-                          r.type === 'MC' ? 'bg-red-500/10 text-red-400' :
-                            'bg-amber-500/10 text-amber-400'
-                          }`}>
-                          {r.type}
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          r.type === 'AL'
+                            ? (r.isCarryForward ? 'bg-indigo-500/10 text-indigo-400' : 'bg-blue-500/10 text-blue-400')
+                            : r.type === 'MC' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'
+                        }`}>
+                          {r.type === 'AL' && r.isCarryForward ? 'AL (CF)' : r.type}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-muted-foreground">

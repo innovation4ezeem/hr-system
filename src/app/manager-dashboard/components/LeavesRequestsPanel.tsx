@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useAppContext } from '@/context/AppContext';
 import { buildClientAuthHeaders, readClientIdentity } from '@/lib/clientAuth';
 
-type LeaveType = 'Annual Leave' | 'MC' | 'WFH' | 'Unpaid' | 'Reward Leave' | 'CS Replacement';
+type LeaveType = 'Annual Leave' | 'AL (Carry Forward)' | 'MC' | 'WFH' | 'Unpaid' | 'Reward Leave' | 'CS Replacement';
 type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
 
 type TeamHistoryLeaveRequest = {
@@ -29,6 +29,7 @@ type TeamHistoryLeaveRequest = {
   finalDecisionComment?: string;
   rejectionReason?: string;
   cancelReason?: string;
+  isCarryForward?: boolean;
 };
 
 interface LeaveRequest {
@@ -48,6 +49,7 @@ interface LeaveRequest {
 
 const leaveTypeColor: Record<LeaveType, { bg: string; text: string }> = {
   'Annual Leave': { bg: 'rgba(79,127,255,0.1)', text: 'rgb(79 127 255)' },
+  'AL (Carry Forward)': { bg: 'rgba(99, 102, 241, 0.1)', text: 'rgb(99 102 241)' },
   MC: { bg: 'rgba(248,113,113,0.1)', text: 'rgb(248 113 113)' },
   WFH: { bg: 'rgba(52,211,153,0.1)', text: 'rgb(52 211 153)' },
   Unpaid: { bg: 'rgba(100,100,130,0.15)', text: 'rgb(var(--text-secondary))' },
@@ -98,11 +100,19 @@ function mapRequest(request: TeamHistoryLeaveRequest): LeaveRequest {
   const halfDay = String(request.session || '').toUpperCase() !== 'FULL' || Number(request.units || 0) < 1;
   const appliedSource = request.requestedAt || request.approvedAt || request.rejectedAt || request.cancelledAt || new Date().toISOString();
   const appliedOn = formatDate(appliedSource);
+
+  let type: LeaveType = 'Annual Leave';
+  if (request.leaveType === 'AL') {
+    type = request.isCarryForward ? 'AL (Carry Forward)' : 'Annual Leave';
+  } else {
+    type = (request.leaveType as LeaveType) || 'Annual Leave';
+  }
+
   return {
     id: request.id,
     employee: request.employeeName,
     dept: request.dept,
-    type: (request.leaveType as LeaveType) || 'Annual Leave',
+    type,
     startDate: formatDate(request.startDate),
     endDate: formatDate(request.endDate),
     days: Number(request.units ?? 0),

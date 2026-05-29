@@ -429,7 +429,8 @@ export async function approveLeaveRequestController(
   let pendingStep = steps.find(step => step.action === 'pending');
 
   const approver = await getUser(approvedBy);
-  const isDirectApprover = approver?.role === 'admin' || approver?.role === 'hod' || approver?.role === 'director';
+  const approvedByRole = approver?.role || approvedBy.toLowerCase();
+  const isDirectApprover = approvedByRole === 'admin' || approvedByRole === 'hod' || approvedByRole === 'director';
 
   if (!pendingStep) {
     // Self-healing: If request is pending but has no steps, create a level 1 step for the current actor if they are HOD/Admin
@@ -570,7 +571,8 @@ export async function rejectLeaveRequestController(
   let pendingStep = steps.find(step => step.action === 'pending');
 
   const actor = await getUser(rejectedBy);
-  const isDirectApprover = actor?.role === 'admin' || actor?.role === 'hod' || actor?.role === 'director';
+  const rejectedByRole = actor?.role || rejectedBy.toLowerCase();
+  const isDirectApprover = rejectedByRole === 'admin' || rejectedByRole === 'hod' || rejectedByRole === 'director';
 
   if (!pendingStep) {
     // Self-healing: If request is pending but has no steps, create a level 1 step for the current actor if they are HOD/Admin

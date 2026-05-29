@@ -153,9 +153,11 @@ export async function approvePerformanceScoreController(payload: {
     throw new Error('Performance score not found for approval target');
   }
 
-  const allUsers = await (await import('@/models/userModel')).listUsers();
-  const employee = allUsers.find(u => u.id === payload.employeeId);
-  const actor = allUsers.find(u => u.id === payload.actor);
+  const { getUser } = await import('@/models/userModel');
+  const [employee, actorRecord] = await Promise.all([
+    getUser(payload.employeeId),
+    getUser(payload.actor)
+  ]);
 
   await insertSystemAuditLog('performance-score', 'approve', payload.actor, {
     employeeId: payload.employeeId,
@@ -177,7 +179,7 @@ export async function approvePerformanceScoreController(payload: {
     grade: scoreToGrade(updated.finalScore),
     remarks: updated.overrideComment || undefined,
     actorId: payload.actor,
-    actorName: actor?.name || payload.actor,
+    actorName: actorRecord?.name || payload.actor,
     breakdown: [
       { label: 'Performance', score: updated.performance60 },
       { label: 'Participation', score: updated.participation25 },
@@ -203,9 +205,11 @@ export async function overridePerformanceScoreController(payload: {
     throw new Error('Performance score not found for override target');
   }
 
-  const allUsers = await (await import('@/models/userModel')).listUsers();
-  const employee = allUsers.find(u => u.id === payload.employeeId);
-  const actor = allUsers.find(u => u.id === payload.actor);
+  const { getUser } = await import('@/models/userModel');
+  const [employee, actorRecord] = await Promise.all([
+    getUser(payload.employeeId),
+    getUser(payload.actor)
+  ]);
 
   await insertSystemAuditLog('manual-override', 'performance-score', payload.actor, {
     employeeId: payload.employeeId,
@@ -229,7 +233,7 @@ export async function overridePerformanceScoreController(payload: {
     grade: scoreToGrade(updated.finalScore),
     remarks: payload.comment,
     actorId: payload.actor,
-    actorName: actor?.name || payload.actor,
+    actorName: actorRecord?.name || payload.actor,
     breakdown: [
       { label: 'Override Reason', score: payload.comment }
     ]
@@ -277,25 +281,33 @@ export async function createPenaltyController(payload: Omit<PenaltyRecord, 'id'>
     createdBy: actor,
   });
 
-  const allUsers = await (await import('@/models/userModel')).listUsers();
-  const employee = allUsers.find(u => u.id === created.employeeId);
-  const actorRecord = allUsers.find(u => u.id === actor);
+  // Run notification in background asynchronously
+  (async () => {
+    try {
+      const { getUser } = await import('@/models/userModel');
+      const [employee, actorRecord] = await Promise.all([
+        getUser(created.employeeId),
+        getUser(actor)
+      ]);
 
-  const { HRNotificationService } = await import('@/lib/notifications/hrNotificationService');
-  await HRNotificationService.notifyPenaltyAction({
-
-    penaltyId: created.id,
-    employeeId: created.employeeId,
-    employeeName: created.employeeName,
-    employeeEmail: employee?.email || `${created.employeeId}@ezeetechnosys.com.my`,
-    penaltyType: created.penaltyTypeCode,
-    incidentDate: created.penaltyDate,
-    amount: 'Record logged',
-    action: 'created',
-    actorId: actor,
-    actorName: actorRecord?.name || actor,
-    description: created.reason,
-  });
+      const { HRNotificationService } = await import('@/lib/notifications/hrNotificationService');
+      await HRNotificationService.notifyPenaltyAction({
+        penaltyId: created.id,
+        employeeId: created.employeeId,
+        employeeName: created.employeeName,
+        employeeEmail: employee?.email || `${created.employeeId}@ezeetechnosys.com.my`,
+        penaltyType: created.penaltyTypeCode,
+        incidentDate: created.penaltyDate,
+        amount: 'Record logged',
+        action: 'created',
+        actorId: actor,
+        actorName: actorRecord?.name || actor,
+        description: created.reason,
+      });
+    } catch (err) {
+      console.error('[createPenaltyController] Background notification failed:', err);
+    }
+  })();
 
   return created;
 }
@@ -303,25 +315,33 @@ export async function createPenaltyController(payload: Omit<PenaltyRecord, 'id'>
 export async function updatePenaltyController(id: string, patch: Partial<PenaltyRecord>, actor: string) {
   const updated = await updatePenalty(id, patch);
   if (updated) {
-    const allUsers = await (await import('@/models/userModel')).listUsers();
-    const employee = allUsers.find(u => u.id === updated.employeeId);
-    const actorRecord = allUsers.find(u => u.id === actor);
+    // Run notification in background asynchronously
+    (async () => {
+      try {
+        const { getUser } = await import('@/models/userModel');
+        const [employee, actorRecord] = await Promise.all([
+          getUser(updated.employeeId),
+          getUser(actor)
+        ]);
 
-    const { HRNotificationService } = await import('@/lib/notifications/hrNotificationService');
-    await HRNotificationService.notifyPenaltyAction({
-
-      penaltyId: id,
-      employeeId: updated.employeeId,
-      employeeName: updated.employeeName,
-      employeeEmail: employee?.email || `${updated.employeeId}@ezeetechnosys.com.my`,
-      penaltyType: updated.penaltyTypeCode,
-      incidentDate: updated.penaltyDate,
-      amount: 'Record updated',
-      action: 'updated',
-      actorId: actor,
-      actorName: actorRecord?.name || actor,
-      description: updated.reason,
-    });
+        const { HRNotificationService } = await import('@/lib/notifications/hrNotificationService');
+        await HRNotificationService.notifyPenaltyAction({
+          penaltyId: id,
+          employeeId: updated.employeeId,
+          employeeName: updated.employeeName,
+          employeeEmail: employee?.email || `${updated.employeeId}@ezeetechnosys.com.my`,
+          penaltyType: updated.penaltyTypeCode,
+          incidentDate: updated.penaltyDate,
+          amount: 'Record updated',
+          action: 'updated',
+          actorId: actor,
+          actorName: actorRecord?.name || actor,
+          description: updated.reason,
+        });
+      } catch (err) {
+        console.error('[updatePenaltyController] Background notification failed:', err);
+      }
+    })();
   }
   return updated;
 }

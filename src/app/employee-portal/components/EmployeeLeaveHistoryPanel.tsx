@@ -29,6 +29,7 @@ type LeaveRequest = {
   rejectionReason?: string;
   cancelReason?: string;
   finalDecisionComment?: string;
+  isCarryForward?: boolean;
 };
 
 const REQUEST_STATUSES = ['All', 'pending', 'inquiring', 'approved', 'rejected', 'cancelled'];
@@ -334,7 +335,12 @@ export default function EmployeeLeaveHistoryPanel({ employeeId, onAction }: Empl
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
                           <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: getStatusColor(req.status).bg, color: getStatusColor(req.status).text }}>{req.status}</span>
-                          <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: 'rgba(79, 127, 255, 0.12)', color: 'rgb(79 127 255)' }}>{req.leaveType}</span>
+                          <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ 
+                            background: req.leaveType === 'AL' && req.isCarryForward ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 127, 255, 0.12)', 
+                            color: req.leaveType === 'AL' && req.isCarryForward ? 'rgb(99 102 241)' : 'rgb(79 127 255)' 
+                          }}>
+                            {req.leaveType === 'AL' && req.isCarryForward ? 'AL (Carry Forward)' : req.leaveType}
+                          </span>
                           <span className="text-xs font-mono">{req.units} days</span>
                         </div>
                         <p className="text-xs mt-2" style={{ color: 'rgb(var(--text-secondary))' }}>{req.startDate} to {req.endDate}</p>
