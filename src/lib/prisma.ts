@@ -21,6 +21,7 @@ function createPrismaClient(): PrismaClient {
       password: decodeURIComponent(urlObj.password),
       database: urlObj.pathname.substring(1),
       connectionLimit: process.env.NODE_ENV === 'production' ? 1 : 2,
+      idleTimeout: 15000,
     };
     
     // Casting to 'any' to bypass TypeScript nested dependency mismatch 
