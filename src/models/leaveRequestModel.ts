@@ -326,7 +326,7 @@ export async function enrichLeaveRequestsWithCarryForward(requests: LeaveRequest
             lte: `${year}-02-28`
           },
           status: {
-            in: ['approved', 'pending'] as any
+            in: ['approved', 'pending', 'history-archived'] as any
           }
         },
         select: {

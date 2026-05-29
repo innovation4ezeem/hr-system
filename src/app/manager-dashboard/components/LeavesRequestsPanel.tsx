@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useAppContext } from '@/context/AppContext';
 import { buildClientAuthHeaders, readClientIdentity } from '@/lib/clientAuth';
 
-type LeaveType = 'Annual Leave' | 'AL (Carry Forward)' | 'MC' | 'WFH' | 'Unpaid' | 'Reward Leave' | 'CS Replacement';
+type LeaveType = 'Annual Leave' | 'AL Carry' | 'MC' | 'WFH' | 'Unpaid' | 'Reward Leave' | 'CS Replacement';
 type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Archived';
 
 type TeamHistoryLeaveRequest = {
@@ -49,7 +49,7 @@ interface LeaveRequest {
 
 const leaveTypeColor: Record<LeaveType, { bg: string; text: string }> = {
   'Annual Leave': { bg: 'rgba(79,127,255,0.1)', text: 'rgb(79 127 255)' },
-  'AL (Carry Forward)': { bg: 'rgba(99, 102, 241, 0.1)', text: 'rgb(99 102 241)' },
+  'AL Carry': { bg: 'rgba(99, 102, 241, 0.1)', text: 'rgb(99 102 241)' },
   MC: { bg: 'rgba(248,113,113,0.1)', text: 'rgb(248 113 113)' },
   WFH: { bg: 'rgba(52,211,153,0.1)', text: 'rgb(52 211 153)' },
   Unpaid: { bg: 'rgba(100,100,130,0.15)', text: 'rgb(var(--text-secondary))' },
@@ -105,7 +105,7 @@ function mapRequest(request: TeamHistoryLeaveRequest): LeaveRequest {
 
   let type: LeaveType = 'Annual Leave';
   if (request.leaveType === 'AL') {
-    type = request.isCarryForward ? 'AL (Carry Forward)' : 'Annual Leave';
+    type = request.isCarryForward ? 'AL Carry' : 'Annual Leave';
   } else {
     type = (request.leaveType as LeaveType) || 'Annual Leave';
   }

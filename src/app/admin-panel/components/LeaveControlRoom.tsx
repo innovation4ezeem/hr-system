@@ -23,7 +23,7 @@ type LeaveRequest = {
   employeeId: string;
   employee: string;
   dept: string;
-  type: 'AL' | 'MC' | 'WFH' | 'UNPAID' | 'REWARD' | 'CS';
+  type: 'AL' | 'AL Carry' | 'MC' | 'WFH' | 'UNPAID' | 'REWARD' | 'CS';
   date: string;
   startDate: string;
   endDate: string;
@@ -711,7 +711,7 @@ export default function LeaveControlRoom() {
             employeeId: String(request.employeeId || request.employee_id || ''),
             employee: String(request.employeeName || request.employee_name || request.employee || ''),
             dept: String(request.dept || ''),
-            type: String(request.leaveType || request.leave_type || 'AL') as LeaveRequest['type'],
+            type: (request.isCarryForward && (request.leaveType === 'AL' || request.leave_type === 'AL') ? 'AL Carry' : String(request.leaveType || request.leave_type || 'AL')) as LeaveRequest['type'],
             date: String(request.startDate || request.start_date || request.requestedAt || request.requested_at || ''),
             startDate: String(request.startDate || request.start_date || ''),
             endDate: String(request.endDate || request.end_date || ''),
@@ -1188,11 +1188,11 @@ export default function LeaveControlRoom() {
                       </td>
                       <td className="px-4 py-2">
                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                          r.type === 'AL'
-                            ? (r.isCarryForward ? 'bg-indigo-500/10 text-indigo-400' : 'bg-blue-500/10 text-blue-400')
+                          r.type === 'AL Carry' ? 'bg-indigo-500/10 text-indigo-400' :
+                          r.type === 'AL' ? 'bg-blue-500/10 text-blue-400'
                             : r.type === 'MC' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'
                         }`}>
-                          {r.type === 'AL' && r.isCarryForward ? 'AL (CF)' : r.type}
+                          {r.type}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-muted-foreground">

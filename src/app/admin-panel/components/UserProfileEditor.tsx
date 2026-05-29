@@ -4,6 +4,8 @@ import Icon from '@/components/ui/AppIcon';
 import { toast } from 'sonner';
 import { isValidMalaysiaPhone } from '@/lib/dateUtils';
 import InlineEditableField from '@/components/ui/InlineEditableField';
+import { useAppContext } from '@/context/AppContext';
+import { buildClientAuthHeaders } from '@/lib/clientAuth';
 
 export interface UserProfile {
   id: string;
@@ -48,6 +50,14 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+
+  const { userId, userRole, userName, userDepartment } = useAppContext();
+  const authHeaders = buildClientAuthHeaders({
+    role: userRole as any,
+    userId: userId,
+    userName: userName,
+    department: userDepartment
+  });
 
   const formatLastUpdated = (value?: string | null) => {
     if (!value) return 'N/A';
@@ -139,7 +149,10 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
     try {
       const response = await fetch('/api/profile/update-request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...authHeaders
+        },
         body: JSON.stringify({ 
           employeeId: profile.id,
           requestedChanges: { [apiField]: newValue }
@@ -187,7 +200,10 @@ export default function UserProfileEditor({ user, onSave, onClose, allUsers = []
     try {
       const res = await fetch('/api/admin/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...authHeaders
+        },
         body: JSON.stringify({ userId: profile.id, newPassword }),
       });
       if (!res.ok) throw new Error('Failed to change password');

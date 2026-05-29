@@ -4,6 +4,7 @@ import {
   getEmployeeNotificationsController,
   markNotificationReadController,
 } from '@/controllers/notificationController';
+import { getCache, setCache, deleteCache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'employeeId is required' }, { status: 400 });
     }
 
+    const cacheKey = `inbox:user:${employeeId}`;
+    const cachedData = await getCache<any>(cacheKey);
+
+    if (cachedData !== null) {
+      return NextResponse.json(cachedData, { status: 200 });
+    }
+
     const data = await getEmployeeNotificationsController(employeeId);
+    await setCache(cacheKey, data, 60);
+
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -34,6 +44,12 @@ export async function POST(request: NextRequest) {
       }
 
       await markNotificationReadController(notificationId);
+      
+      // Need to clear cache. The body might not have employeeId, but let's assume if it does we clear it.
+      // Usually, it's safer to clear the cache. For mark-read we might need employeeId.
+      if (body?.employeeId) {
+        await deleteCache(`inbox:user:${body.employeeId}`);
+      }
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
@@ -44,6 +60,7 @@ export async function POST(request: NextRequest) {
       }
 
       await clearAllNotificationsController(employeeId);
+      await deleteCache(`inbox:user:${employeeId}`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 

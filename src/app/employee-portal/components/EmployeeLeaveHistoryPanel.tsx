@@ -339,7 +339,7 @@ export default function EmployeeLeaveHistoryPanel({ employeeId, onAction }: Empl
                             background: req.leaveType === 'AL' && req.isCarryForward ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 127, 255, 0.12)', 
                             color: req.leaveType === 'AL' && req.isCarryForward ? 'rgb(99 102 241)' : 'rgb(79 127 255)' 
                           }}>
-                            {req.leaveType === 'AL' && req.isCarryForward ? 'AL (Carry Forward)' : req.leaveType}
+                            {req.leaveType === 'AL' && req.isCarryForward ? 'AL Carry' : req.leaveType}
                           </span>
                           <span className="text-xs font-mono">{req.units} days</span>
                         </div>

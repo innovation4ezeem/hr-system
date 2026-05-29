@@ -40,7 +40,7 @@ export default function PersonalLeaveStatusPanel({ leaveHistory = [], onViewFull
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: 'rgb(var(--text-primary))' }}>
-                      {item.leaveType === 'AL' && (item as any).isCarryForward ? 'AL (Carry Forward)' : item.leaveType}
+                      {item.leaveType === 'AL' && (item as any).isCarryForward ? 'AL Carry' : item.leaveType}
                     </p>
                     <p className="text-[10px] font-mono mt-0.5 opacity-60">
                       {item.startDate} {item.startDate !== item.endDate ? `→ ${item.endDate}` : ''}

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getRequestDepartment, getRequestUserId, requireRole } from '@/lib/apiAuth';
+import { getCache, setCache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,17 +14,26 @@ export async function GET(request: NextRequest) {
 
     let pendingLeaveCount = 0;
 
-    if (auth.role === 'admin') {
-      pendingLeaveCount = await prisma.leave_requests.count({
-        where: { status: 'pending' }
-      });
-    } else if (auth.role === 'hod' && department) {
-      pendingLeaveCount = await prisma.leave_requests.count({
-        where: { 
-          status: 'pending',
-          dept: department
-        }
-      });
+    const cacheKey = `sidebar-stats:leave:${auth.role}:${department || 'all'}`;
+    const cachedCount = await getCache<number>(cacheKey);
+
+    if (cachedCount !== null) {
+      pendingLeaveCount = cachedCount;
+    } else {
+      if (auth.role === 'admin') {
+        pendingLeaveCount = await prisma.leave_requests.count({
+          where: { status: 'pending' }
+        });
+      } else if (auth.role === 'hod' && department) {
+        pendingLeaveCount = await prisma.leave_requests.count({
+          where: { 
+            status: 'pending',
+            dept: department
+          }
+        });
+      }
+      // Cache for 60 seconds
+      await setCache(cacheKey, pendingLeaveCount, 60);
     }
 
     return NextResponse.json({
