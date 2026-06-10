@@ -173,12 +173,20 @@ export async function requestPasswordResetController(email: string) {
     const resetLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:4028'}/?action=reset&token=${resetToken}`;
 
     const { sendPasswordResetEmailController } = await import('@/controllers/notificationController');
-    sendPasswordResetEmailController({
-      recipientEmail: email,
-      recipientName: dbUser.name,
-      resetLink: resetLink,
-      tempPassword: tempPassword
-    }).catch(err => console.error('Background reset email failed:', err));
+    
+    // Properly await the email sending
+    try {
+      await sendPasswordResetEmailController({
+        recipientEmail: email,
+        recipientName: dbUser.name,
+        resetLink: resetLink,
+        tempPassword: tempPassword
+      });
+      console.log(`[requestPasswordReset] Password reset email sent successfully for ${email}`);
+    } catch (emailError) {
+      console.error(`[requestPasswordReset] Failed to send password reset email for ${email}:`, emailError);
+      // Still return success to user to prevent email enumeration
+    }
     
   } catch (error) {
     console.error('Failed to generate temporary password:', error);

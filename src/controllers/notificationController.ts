@@ -318,13 +318,43 @@ export async function sendPasswordResetEmailController(params: {
     tempPassword: params.tempPassword
   });
 
-  sendEmailNotification(
-    params.recipientEmail,
-    tpl.subject,
-    tpl.subject, // Text version
-    provider,
-    tpl.html
-  ).catch(err => console.error('[sendPasswordResetEmail] Background email send failed:', err));
+  // Create plain text version of the email
+  const plainTextMessage = `
+Password Recovery
+
+Hello ${params.recipientName},
+
+We received a request to recover your password for your EzeemOps account.
+
+${params.tempPassword ? `Your Temporary Password: ${params.tempPassword}\n\nUse this password to sign in immediately. You can change it later in your profile settings.\n` : ''}
+
+If you did not request this, you can safely ignore this email.
+
+If the link doesn't work, copy and paste this into your browser:
+${params.resetLink}
+
+Regards,
+EzeemOps HR System
+  `.trim();
+
+  try {
+    const result = await sendEmailNotification(
+      params.recipientEmail,
+      tpl.subject,
+      plainTextMessage,
+      provider,
+      tpl.html
+    );
+    
+    if (!result) {
+      console.warn(`[sendPasswordResetEmail] Failed to send password reset email to ${params.recipientEmail}`);
+    } else {
+      console.log(`[sendPasswordResetEmail] Successfully sent password reset email to ${params.recipientEmail}`);
+    }
+  } catch (err) {
+    console.error('[sendPasswordResetEmail] Error sending password reset email:', err);
+    throw err;
+  }
 }
 
 export async function sendLeaveSubmissionNotificationController(params: {
