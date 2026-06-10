@@ -101,8 +101,8 @@ export default function ProfileEditForm({ onClose, onSuccess, currentData }: Pro
         if (newPassword !== confirmPassword) {
           throw new Error('New passwords do not match.');
         }
-        if (newPassword.length < 6) {
-          throw new Error('Password must be at least 6 characters.');
+        if (newPassword.length < 8) {
+          throw new Error('Password must be at least 8 characters.');
         }
 
         const passRes = await fetch('/api/profile/change-password', {
@@ -258,7 +258,8 @@ export default function ProfileEditForm({ onClose, onSuccess, currentData }: Pro
                     className="input-base text-sm"
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
-                    placeholder="Min 6 characters"
+                    placeholder="Min 8 characters"
+                    minLength={8}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -269,6 +270,7 @@ export default function ProfileEditForm({ onClose, onSuccess, currentData }: Pro
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Match new password"
+                    minLength={8}
                   />
                 </div>
               </div>
