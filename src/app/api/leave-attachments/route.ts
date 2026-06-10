@@ -84,20 +84,10 @@ export async function POST(request: NextRequest) {
         filePath = generateDataUrl(buffer, file.type);
       }
     } else {
-      // Production environment - use data URL or return error with guidance
-      console.warn(`[leave-attachments] Filesystem not writable. Attempting data URL fallback.`);
-      
-      if (file.size > 1024 * 1024) {
-        // For large files, data URLs aren't practical
-        return NextResponse.json({
-          error: 'File upload is not configured for this environment. Please contact administrator.',
-          details: 'File storage needs to be configured on this server.'
-        }, { status: 503 });
-      }
-      
-      // For smaller files, use data URL
+      // Production environment - use data URL fallback
+      console.warn(`[leave-attachments] Filesystem not writable. Using data URL fallback for file: ${fileName}`);
       filePath = generateDataUrl(buffer, file.type);
-      console.log(`[leave-attachments] Using data URL for file: ${fileName}`);
+      console.log(`[leave-attachments] File converted to data URL (${file.size} bytes)`);
     }
 
     return NextResponse.json(

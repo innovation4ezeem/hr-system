@@ -471,8 +471,12 @@ export default function EvaluationFormBuilder() {
 
   const loadUsers = async () => {
     try {
-      const response = await fetch(`/api/users?t=${Date.now()}`, { headers: authHeaders });
-      if (!response.ok) throw new Error('Failed to load users');
+      const headers = buildAuthHeaders();
+      const response = await fetch(`/api/users?t=${Date.now()}`, { headers });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to load users (${response.status})`);
+      }
       const payload = await response.json();
       if (Array.isArray(payload?.users)) {
         setUsers(
@@ -485,8 +489,9 @@ export default function EvaluationFormBuilder() {
             }))
         );
       }
-    } catch {
-      toast.error('Failed to load users list');
+    } catch (err) {
+      console.error('Failed to load users list:', err);
+      toast.error(`Failed to load users list: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
