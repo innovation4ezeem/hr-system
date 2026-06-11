@@ -47,7 +47,7 @@
   "dependencies": {
     "@dhiwise/component-tagger": "^1.0.15",
     "@heroicons/react": "^2.2.0",
- 
+    "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
@@ -60,7 +60,7 @@
     "jose": "^6.2.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
-
+    "mariadb": "^3.5.2",
     "next": "^15.5.16",
     "nodemailer": "^8.0.5",
     "pdfkit": "^0.18.0",
@@ -69,7 +69,7 @@
     "react-hook-form": "^7.72.1",
     "recharts": "^2.15.2",
     "sonner": "^1.7.1",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "zod": "^4.3.6"
   },
   "overrides": {
