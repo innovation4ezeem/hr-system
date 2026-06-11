@@ -227,6 +227,13 @@ export async function POST(request: NextRequest) {
 
     if (action === 'upsert-reflection') {
       const { employeeId, periodLabel, reflection, hodComment } = body;
+
+      // Protect against clients embedding large base64 data URLs in the reflection
+      if (typeof reflection === 'string') {
+        if (reflection.includes('data:') || reflection.length > 200000) {
+          return NextResponse.json({ error: 'Reflection payload too large or contains embedded files. Please upload attachments and retry.' }, { status: 413 });
+        }
+      }
       
       // Employees can only save their own reflection
       if (auth.role === 'employee' && employeeId !== requesterId) {
