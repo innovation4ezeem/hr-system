@@ -448,6 +448,11 @@ export default function SelfEvaluationSection({
       const name = payload?.attachment?.originalName || file.name;
       const url = payload?.attachment?.path || '';
 
+      // Reject raw data URLs — server should not return large base64 payloads
+      if (typeof url === 'string' && url.startsWith('data:')) {
+        throw new Error('Attachment storage is not available. Please try again later.');
+      }
+
       setCourseCertName(name);
       setCourseCertUrl(url);
 
@@ -479,6 +484,11 @@ export default function SelfEvaluationSection({
 
       const name = payload?.attachment?.originalName || file.name;
       const url = payload?.attachment?.path || '';
+
+      // Reject raw data URLs — server should not return large base64 payloads
+      if (typeof url === 'string' && url.startsWith('data:')) {
+        throw new Error('Attachment storage is not available. Please try again later.');
+      }
 
       setPlgtPlayPhotoName(name);
       setPlgtPlayPhotoUrl(url);

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, getRequestUserId } from '@/lib/apiAuth';
 import { access, constants } from 'fs/promises';
+import { createEvaluationAttachment } from '@/models/evaluationModel';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
@@ -80,14 +81,48 @@ export async function POST(request: NextRequest) {
         filePath = await saveToFilesystem(buffer, fileName);
         console.log(`[leave-attachments] File saved to filesystem: ${filePath}`);
       } catch (fsError) {
-        console.warn(`[leave-attachments] Filesystem write failed, falling back to data URL:`, fsError);
-        filePath = generateDataUrl(buffer, file.type);
+        console.warn(`[leave-attachments] Filesystem write failed, attempting DB persist:`, fsError);
+        // Try to persist in DB instead of returning data URL
+        const dataUrl = generateDataUrl(buffer, file.type);
+        try {
+          const employeeId = getRequestUserId(request) || 'unknown';
+          const attachment = await createEvaluationAttachment({
+            employeeId,
+            fileName: file.name,
+            fileUrl: dataUrl,
+            note: '',
+            uploadedBy: employeeId,
+          });
+          filePath = `/api/evaluation-attachments?id=${attachment.id}`;
+          console.log(`[leave-attachments] Attachment persisted with id=${attachment.id}`);
+        } catch (dbErr) {
+          console.error('[leave-attachments] Failed to persist attachment in DB after FS write failure:', dbErr);
+          return NextResponse.json({ error: 'Failed to store attachment. Please contact administrator.' }, { status: 503 });
+        }
       }
     } else {
-      // Production environment - use data URL fallback
-      console.warn(`[leave-attachments] Filesystem not writable. Using data URL fallback for file: ${fileName}`);
-      filePath = generateDataUrl(buffer, file.type);
-      console.log(`[leave-attachments] File converted to data URL (${file.size} bytes)`);
+      // Production environment - persist attachment in DB (do not return raw data URLs)
+      console.warn(`[leave-attachments] Filesystem not writable. Persisting attachment record for file: ${fileName}`);
+      const dataUrl = generateDataUrl(buffer, file.type);
+
+      // Persist attachment in DB so we can serve it later via a short URL
+      try {
+        const employeeId = getRequestUserId(request) || 'unknown';
+        const attachment = await createEvaluationAttachment({
+          employeeId,
+          fileName: file.name,
+          fileUrl: dataUrl,
+          note: '',
+          uploadedBy: employeeId,
+        });
+
+        // Return a short URL that points to our new attachment GET endpoint
+        filePath = `/api/evaluation-attachments?id=${attachment.id}`;
+        console.log(`[leave-attachments] Attachment persisted with id=${attachment.id}`);
+      } catch (dbErr) {
+        console.error('[leave-attachments] Failed to persist attachment in DB:', dbErr);
+        return NextResponse.json({ error: 'Failed to store attachment. Please contact administrator.' }, { status: 503 });
+      }
     }
 
     return NextResponse.json(
