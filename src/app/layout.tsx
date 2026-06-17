@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AppProvider } from '@/context/AppContext';
+import { Analytics } from '@vercel/analytics/next';
 import '../styles/tailwind.css';
 
 export const metadata: Metadata = {
@@ -49,6 +50,7 @@ export default async function RootLayout({
 					{children}
 					<Toaster richColors position="top-right" closeButton />
 				</AppProvider>
+				<Analytics />
 			</body>
 		</html>
 	);
